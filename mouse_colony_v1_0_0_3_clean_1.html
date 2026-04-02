@@ -1,0 +1,3173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mouse Colony Manager v4 (v1.0.0.3)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#1a1a1a;background:#f5f4f0}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* LOADER */
+.lscreen{position:fixed;inset:0;background:#f5f4f0;display:flex;align-items:center;justify-content:center;z-index:9999}
+.lcard{background:#fff;border:1px solid #e0ddd6;border-radius:16px;padding:44px 48px;max-width:460px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.07)}
+.licon{font-size:44px;margin-bottom:16px}
+.ltitle{font-size:22px;font-weight:700;margin-bottom:8px}
+.lsub{font-size:13px;color:#888;margin-bottom:24px;line-height:1.6}
+.ldrop{border:2px dashed #d0cdc7;border-radius:12px;padding:26px 20px;margin-bottom:14px;cursor:pointer;transition:all .2s;background:#fafaf8}
+.ldrop:hover,.ldrop.drag-on{border-color:#3B8BD4;background:#f0f7ff}
+.ldrop-icon{font-size:28px;margin-bottom:8px}
+.ldrop-txt{font-size:14px;color:#555;margin-bottom:3px}
+.ldrop-sub{font-size:11px;color:#aaa}
+.lor{font-size:11px;color:#ccc;margin:10px 0}
+.lsample{font-size:12px;color:#3B8BD4;cursor:pointer;text-decoration:underline;border:none;background:none;padding:0}
+.lprog{margin-top:16px;font-size:12px;color:#888;display:none}
+.lbar{width:100%;height:4px;background:#f0ede8;border-radius:2px;margin-top:7px;overflow:hidden}
+.lfill{height:100%;background:#3B8BD4;width:0;transition:width .3s;border-radius:2px}
+.lerr{color:#dc2626;font-size:12px;margin-top:10px;display:none}
+
+/* NAV */
+.nav{display:flex;align-items:center;padding:0 14px;background:#fff;border-bottom:1px solid #e0ddd6;flex-wrap:wrap;flex-shrink:0;z-index:40;gap:0}
+.nav-title{font-size:14px;font-weight:700;padding:10px 0;margin-right:12px;white-space:nowrap}
+.nav-title span{color:#999;font-weight:400;font-size:11px}
+.nt{padding:10px 10px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:#777;transition:all .12s;white-space:nowrap;user-select:none}
+.nt:hover{color:#1a1a1a}
+.nt.active{color:#1a1a1a;border-bottom-color:#1a1a1a;font-weight:600}
+.nav-sp{flex:1}
+.nav-r{display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;padding:7px 0}
+
+/* TIMELINE BAR */
+.tlbar{background:#fff;border-bottom:1px solid #e0ddd6;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.tl-label{font-size:11px;font-weight:600;color:#555;white-space:nowrap}
+.tl-input{padding:3px 6px;font-size:12px;border:1px solid #ddd;border-radius:7px;background:#fafaf8;color:#1a1a1a;width:120px;font-family:inherit}
+.tl-input-time{width:80px}
+.tl-input:focus{outline:none;border-color:#3B8BD4}
+.tl-evcount{display:none}
+.tl-slider{flex:1;min-width:80px;height:4px;-webkit-appearance:none;appearance:none;border-radius:2px;outline:none;cursor:pointer;background:linear-gradient(to right,#3B8BD4 0%,#3B8BD4 100%,#e0ddd6 100%,#e0ddd6 100%)}
+.tl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#3B8BD4;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.tl-live{padding:3px 9px;font-size:11px;border:1px solid #3B8BD4;border-radius:20px;cursor:pointer;color:#3B8BD4;background:#fff;transition:all .12s;white-space:nowrap}
+.tl-live.active{background:#3B8BD4;color:#fff}
+.tl-evcount{font-size:11px;color:#aaa;white-space:nowrap}
+.tl-recbtn{padding:4px 12px;font-size:11px;background:#1a1a1a;color:#fff;border:none;border-radius:7px;cursor:pointer;white-space:nowrap}
+.tl-recbtn:hover{opacity:.85}
+.tl-sep{width:1px;height:18px;background:#e0ddd6;flex-shrink:0}
+
+/* MAIN */
+.main{flex:1;overflow:auto;padding:15px}
+.section{display:none}.section.active{display:block}
+
+/* STAT CARDS */
+.sg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin-bottom:13px}
+.sc{background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:11px 13px}
+.sl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.snum{font-size:19px;font-weight:700}
+.ss{font-size:10px;color:#bbb;margin-top:2px}
+.c-bl{color:#1e40af}.c-gr{color:#166534}.c-re{color:#991b1b}.c-am{color:#92400e}.c-pu{color:#6d28d9}.c-gy{color:#6b7280}.c-te{color:#0f766e}
+
+/* TABLES */
+.tw{background:#fff;border:1px solid #e8e6e0;border-radius:10px;overflow:hidden;margin-bottom:12px}
+.thr{display:flex;align-items:center;padding:9px 13px;border-bottom:1px solid #f0ede8;gap:8px;flex-wrap:wrap}
+.thtitle{font-weight:600;font-size:13px;flex:1;min-width:80px}
+.ts{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ts-fixed{overflow:auto;-webkit-overflow-scrolling:touch}
+.ts-fixed table,.ts table{border-collapse:collapse;width:100%}
+.ts-fixed thead th,.ts thead th{position:sticky;top:0;z-index:4;background:#faf9f7;box-shadow:0 1px 0 #e8e6e0}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:400px}
+th{text-align:left;padding:7px 11px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#999;border-bottom:1px solid #f0ede8;background:#fafaf8;white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid #f8f6f2;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f5f4f0}
+
+/* INPUTS */
+input[type=text],input[type=number],input[type=date],input[type=datetime-local],input[type=time],textarea,.finput{padding:7px 10px;font-size:12px;border:1px solid #ddd;border-radius:8px;background:#fafaf8;color:#1a1a1a;width:100%;font-family:inherit}
+input:focus,textarea:focus,.finput:focus{outline:none;border-color:#3B8BD4}
+select,.fsel{padding:7px 10px;font-size:12px;border:1px solid #ddd;border-radius:8px;background:#fafaf8;color:#1a1a1a;width:100%;cursor:pointer;font-family:inherit}
+select:focus{outline:none;border-color:#3B8BD4}
+
+/* BADGES */
+.badge{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.bM{background:#dbeafe;color:#1e3a8a}.bF{background:#fef3c7;color:#78350f}
+.bWT{background:#f1f0ec;color:#6b7280;border:1px solid #ddd}
+.bHT{background:#dbeafe;color:#1e3a8a}.bHM{background:#dcfce7;color:#14532d}
+.bexp{background:#fef9c3;color:#713f12}.bsac{background:#f1f0ec;color:#6b7280}
+.balive{background:#dcfce7;color:#14532d}.bdead{background:#fee2e2;color:#7f1d1d}
+.bborn{background:#e0e7ff;color:#3730a3}.bbuy{background:#f3e8ff;color:#581c87}.btrans{background:#d1fae5;color:#065f46}
+.bproto{background:#f1f0ec;color:#374151;border:1px solid #ddd;font-size:10px}
+.ev-pill{background:#e8f4ff;color:#1e40af;border-radius:20px;padding:2px 6px;font-size:10px;font-weight:700}
+
+/* FILTERS */
+.fr{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.fl{font-size:11px;color:#888}
+.fb{padding:3px 9px;font-size:11px;border:1px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;color:#777;transition:all .1s;white-space:nowrap}
+.fb.active,.fb:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+
+/* BUTTONS */
+.btn{padding:6px 13px;border:1px solid #ddd;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#1a1a1a;transition:all .12s;white-space:nowrap}
+.btn:hover{background:#f1f0ec}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}.btn-primary:hover{opacity:.85}
+.btn-green{background:#166534;color:#fff;border-color:#166534}.btn-green:hover{opacity:.85}
+.btn-blue{background:#1e40af;color:#fff;border-color:#1e40af}.btn-blue:hover{opacity:.85}
+.btn-red{background:#991b1b;color:#fff;border-color:#991b1b}.btn-red:hover{opacity:.85}
+.fbadge{font-size:10px;color:#444;background:#f1f0ec;border-radius:6px;padding:4px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;border:1px solid #e0ddd6}
+.fbadge:hover{background:#e8e6e0}
+
+/* PAGER */
+.pager{display:flex;align-items:center;gap:6px;padding:8px 13px;border-top:1px solid #f0ede8;font-size:11px;color:#999;flex-wrap:wrap}
+.pb{padding:3px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:11px}
+.pb:disabled{opacity:.35;cursor:default}
+
+/* MODAL */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:none;align-items:center;justify-content:center}
+.mbg.open{display:flex}
+.modal{background:#fff;border-radius:14px;border:1px solid #e0ddd6;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.flabel{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.04em}
+.fnote{font-size:10px;color:#aaa;margin-top:2px}
+.fdiff{font-size:11px;color:#3B8BD4;font-weight:600;margin-top:2px}
+.faction{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #f0ede8}
+
+/* GENOTYPE LOCI */
+.loci-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.lrow{display:flex;gap:7px;align-items:center}
+.lrow input{flex:1;min-width:80px}
+.lrow select{width:130px}
+.ldel{padding:2px 8px;font-size:12px;border:1px solid #fecaca;border-radius:6px;background:#fff5f5;color:#dc2626;cursor:pointer}
+.ladd{padding:4px 11px;font-size:11px;border:1px solid #3B8BD4;border-radius:6px;background:#f0f7ff;color:#1e40af;cursor:pointer;margin-top:3px}
+.geno-loci{display:flex;flex-wrap:wrap;gap:3px}
+.gl{font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700}
+.gl-WT{background:#f1f0ec;color:#6b7280;border:1px solid #ddd}
+.gl-HT{background:#dbeafe;color:#1e3a8a}
+.gl-HM{background:#dcfce7;color:#14532d}
+
+/* MAP */
+.map-top-bar{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.map-filter-group{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;padding-top:2px}
+.map-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.map-filter-sep{font-size:13px;color:#ccc;font-weight:400;flex-shrink:0}
+.map-fsel{padding:4px 8px;font-size:12px;border:1px solid #ddd;border-radius:8px;background:#fafaf8;color:#1a1a1a;cursor:pointer;font-family:inherit;height:28px;max-width:120px}
+.map-fsel:focus{outline:none;border-color:#3B8BD4}
+.rack-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.rack-tab{padding:5px 14px;font-size:12px;border:1px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;color:#666;transition:all .12s}
+.rack-tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.rack-canvas{overflow:auto;max-height:calc(100vh - 280px)}
+.rack-faces{display:flex;gap:0}
+.face-wrap{flex:1;min-width:0}
+.face-lbl{font-size:11px;font-weight:600;color:#777;margin-bottom:6px;padding:4px 8px;background:#f1f0ec;border-radius:6px;display:inline-block}
+.col-hdrs{display:flex;gap:4px;margin-bottom:3px;margin-left:22px}
+.col-hdr{font-size:12px;font-weight:600;color:#bbb;text-align:center;flex:1;min-width:88px}
+.grid-row{display:flex;gap:4px;margin-bottom:4px}
+.row-lbl{font-size:12px;color:#bbb;width:22px;text-align:right;padding-right:4px;padding-top:8px;flex-shrink:0}
+.cell{flex:1;min-width:88px;min-height:82px;border:1px dashed #e0ddd6;border-radius:6px;position:relative;transition:background .1s}
+.cell.drag-over{background:#e8f4ff;border:2px dashed #3B8BD4}
+.ccard{position:absolute;inset:0;border-radius:5px;border:1px solid #e0ddd6;background:#fff;padding:6px 8px;cursor:grab;user-select:none;display:flex;flex-direction:column;gap:2px;overflow:hidden;transition:box-shadow .1s}
+.ccard:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.ccard.dragging{opacity:.25}
+.caddr{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cproto-inline{font-size:10px;color:#555;font-weight:600}
+.cmf{display:flex;gap:3px;flex-wrap:wrap;margin-top:1px}
+.cmfb{font-size:10px;padding:0 5px;border-radius:10px;font-weight:700;line-height:1.7}
+.cmf-m{background:#dbeafe;color:#1e40af}
+.cmf-f{background:#fce7e7;color:#991b1b}
+.cdob{font-size:9px;color:#555;margin-top:2px;line-height:1.5}
+.crow{display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin-top:2px;min-width:0}
+.crow-age{font-size:9px;color:#888;background:#f4f2ef;border-radius:3px;padding:0 3px;line-height:14px;white-space:nowrap}
+.crow-sep{width:1px;height:10px;background:#e0ddd6;margin:0 3px;flex-shrink:0}
+.crow-dob{font-size:9px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.cmf-pup{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px}
+.cmf-pup-badge{background:#e5e7eb;color:#4b5563;font-size:10px;padding:0 5px;border-radius:10px;font-weight:700;line-height:1.7}
+/* BREEDING TABLE */
+.breed-proto-section{margin-bottom:24px}
+.breed-proto-hdr{display:flex;align-items:center;gap:10px;padding:6px 10px;margin-bottom:0;background:#faf9f7;border-radius:6px 6px 0 0;border-bottom:2px solid #e8e6e0}
+.breed-tbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.breed-tbl th{text-align:left;font-size:11px;font-weight:600;color:#999;padding:5px 8px;border-bottom:2px solid #e8e6e0;white-space:nowrap;background:#faf9f7}
+.breed-tbl td{padding:6px 8px;border-bottom:1px solid #f0ede8;vertical-align:top;overflow:hidden}
+.bt-h-pair{width:5%}.bt-h-rack{width:6%}.bt-h-cage{width:6%}.bt-h-status{width:7%}.bt-h-animal{width:27%}.bt-h-pups{width:22%}
+.bt-td-pair{vertical-align:top;padding-top:8px}
+.bt-td-loc{}
+.bt-td-status{padding-top:8px}
+.bt-td-pups{}
+.bt-animal-cell{}
+.bc-proto-badge{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:2px 8px;white-space:nowrap}
+.bc-rack-lbl{font-size:12px;color:#555;font-weight:500}
+.bc-cage-lbl{font-family:monospace;font-size:13px;font-weight:700;color:#1a1a1a}
+.bc-status-active{color:#166534;background:#dcfce7;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;white-space:nowrap}
+.bc-status-exp{color:#9ca3af;background:#f3f4f6;border-radius:4px;padding:1px 6px;font-size:11px;white-space:nowrap}
+.bc-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:2px}
+.bc-dot-active{background:#16a34a}.bc-dot-exp{background:#d1d5db}
+.bc-sn{font-weight:700;color:#1a1a1a;font-size:12px;margin-right:4px}
+.bc-geno{font-size:10px;color:#555;background:#f4f2ef;border-radius:4px;padding:1px 5px;margin-right:4px}
+.bc-exp-tag{font-size:10px;color:#9ca3af;border:1px solid #e5e7eb;border-radius:4px;padding:0 4px}
+.bc-arow{display:flex;align-items:center;flex-wrap:wrap;gap:2px;min-height:20px}
+.bc-adob{font-size:11px;color:#888;margin-top:2px;padding-left:10px}
+.bc-empty{color:#ccc;font-size:12px}
+.bc-pup-wrap{display:flex;flex-direction:column;gap:2px}
+.bc-pup-n{font-weight:700;color:#0369a1;font-size:12px;display:inline}
+.bc-pup-label{font-size:11px;color:#64748b;margin-left:3px}
+.bc-pup-done{color:#bbb;font-size:11px}
+.bc-pup-sns{font-size:10px;color:#9ca3af;margin-top:1px;line-height:1.5}
+.bc-row-dim td{opacity:.4}
+.bc-extra-row td{padding-top:2px;padding-bottom:4px;border-bottom:none}
+
+.map-div{width:2px;background:#e8e6e0;margin:0 8px;flex-shrink:0}
+.map-info{padding:8px 0 0;font-size:11px;color:#999;display:flex;gap:14px;flex-wrap:wrap}
+.mtt{position:fixed;z-index:9999;background:#fff;border:1px solid #e0ddd6;border-radius:8px;padding:10px 12px;font-size:11px;min-width:190px;max-width:260px;pointer-events:none;display:none;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.mtt.vis{display:block}
+.mtt-t{font-weight:700;font-size:12px;margin-bottom:6px}
+.mtt-r{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f8f6f2;font-size:11px}
+.mtt-r:last-of-type{border:none}
+.mtt-l{color:#999}
+.mtt-sn{font-size:10px;color:#ccc;margin-top:6px;border-top:1px solid #f8f6f2;padding-top:4px;line-height:1.7}
+/* MINIMAP */
+.minimap-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;flex:1;min-width:0}
+.minimap-rack{cursor:pointer;border-radius:6px;padding:6px 8px;border:2px solid transparent;background:#fff;border-color:#e8e6e0;transition:all .12s;flex-shrink:0}
+.minimap-rack:hover{border-color:#aaa}
+.minimap-rack.active{border-color:#1a1a1a}
+.minimap-rack-label{font-size:9px;font-weight:700;color:#888;margin-bottom:4px;text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.minimap-faces{display:flex;gap:3px}
+.minimap-face{display:flex;flex-direction:column;gap:1px}
+.minimap-row{display:flex;gap:1px}
+.minimap-cell{width:6px;height:6px;border-radius:1px;background:#f0ede8}
+.minimap-divider{width:3px}/* RACK MANAGEMENT */
+.rack-card{background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.rack-card-title{font-weight:600;font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.rack-meta{font-size:11px;color:#888;margin-bottom:10px}
+.face-config{background:#f8f6f2;border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.face-config-title{font-size:11px;font-weight:600;color:#555;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.face-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* SETTINGS */
+.settings-section{background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:16px;margin-bottom:12px}
+.settings-title{font-weight:600;font-size:13px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f0ede8}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f8f6f2;gap:16px;flex-wrap:wrap}
+.setting-row:last-child{border:none;padding-bottom:0}
+.setting-label{font-size:13px;font-weight:500;flex:1;min-width:160px}
+.setting-desc{font-size:11px;color:#888;margin-top:2px}
+.setting-ctrl{flex-shrink:0;min-width:200px}
+.toggle{position:relative;display:inline-block;width:42px;height:24px}
+.toggle input{opacity:0;width:0;height:0}
+.tslider{position:absolute;cursor:pointer;inset:0;background:#ddd;transition:.2s;border-radius:24px}
+.tslider:before{position:absolute;content:"";width:18px;height:18px;left:3px;bottom:3px;background:#fff;transition:.2s;border-radius:50%}
+input:checked+.tslider{background:#3B8BD4}
+input:checked+.tslider:before{transform:translateX(18px)}
+.color-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.color-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #f0ede8;border-radius:8px}
+.color-item label{font-size:12px;flex:1}
+.color-item input[type=color]{width:36px;height:28px;border:1px solid #ddd;border-radius:6px;padding:2px;cursor:pointer;background:#fff}
+
+/* ALERTS */
+.alert-item{display:flex;gap:10px;padding:10px 13px;border:1px solid #e8e6e0;border-radius:8px;background:#fff;margin-bottom:8px;align-items:flex-start}
+.adot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.adot-r{background:#dc2626}.adot-y{background:#d97706}.adot-b{background:#2563eb}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.sg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){
+  .sg{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-grid{grid-template-columns:1fr!important}
+  .rack-faces{flex-direction:column}
+  .map-div{width:100%;height:2px;margin:8px 0}
+  .cell{min-width:66px;min-height:64px}
+  .col-hdr{min-width:66px}
+  .main{padding:10px}
+  .form-row{grid-template-columns:1fr}
+  .nt{padding:9px 7px;font-size:11px}
+  .setting-ctrl{min-width:140px}
+}
+@media(max-width:500px){
+  .sg{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fr{gap:3px}.fb{padding:2px 7px;font-size:10px}
+  .nt{padding:8px 5px;font-size:10px}
+  .tlbar{padding:7px 10px;gap:6px}
+}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;margin-bottom:12px}
+.pc{background:#fff;border:1px solid #e8e6e0;border-radius:8px;padding:9px;text-align:center}
+.pc-n{font-size:11px;font-weight:600;margin-bottom:2px}
+.pc-v{font-size:17px;font-weight:700}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.sec-title{font-size:14px;font-weight:700;margin-bottom:11px}
+.note-cell{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px}
+.sn-cell{font-family:'SF Mono','Courier New',monospace;font-size:11px;color:#888}
+.empty{text-align:center;padding:28px;color:#bbb;font-size:12px}
+#an-table-wrap{scroll-behavior:smooth}
+#an-table-wrap::-webkit-scrollbar{width:5px}
+#an-table-wrap::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+
+/* CAGE DETAIL MODAL */
+.cage-animal-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f4f2ef;cursor:grab}
+.cage-animal-row:last-child{border-bottom:none}
+.cage-animal-row.dragging-animal{opacity:.3}
+.cell.drop-ready{outline:2px dashed #93c5fd;outline-offset:-2px;background:#eff6ff22}
+.cage-animal-row:hover{background:#faf9f7}
+.cage-animal-sn{font-weight:700;font-size:13px;color:#1a1a1a;min-width:52px}
+.cage-animal-sex{font-size:11px;padding:1px 6px;border-radius:10px;font-weight:700}
+.cage-animal-info{flex:1;min-width:0}
+.cage-animal-geno{font-size:11px;color:#555;background:#f4f2ef;border-radius:4px;padding:1px 5px;margin-bottom:2px;display:inline-block}
+.cage-animal-dob{font-size:11px;color:#888}
+
+.bc-pair-lbl{font-size:12px;font-weight:600;color:#444;font-family:monospace}
+.space-tree-fac{font-size:13px;font-weight:700;color:#444;margin-bottom:6px}
+.space-tree-room{font-size:12px;font-weight:600;color:#888;margin:8px 0 4px 16px}
+.space-tree-rack{font-size:12px;font-weight:700;color:#555;margin:6px 0 2px 32px}
+.space-tree-face{margin:2px 0 2px 52px!important}
+.space-range{font-size:11px;color:#aaa;font-weight:400;margin-left:8px}
+
+/* POP CHART */
+#pop-chart{box-sizing:border-box}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="lscreen" id="lscreen">
+  <div class="lcard">
+    <div class="licon">🐭</div>
+    <div class="ltitle">Mouse Colony Manager</div>
+    <div class="lsub">Load your data file to get started.</div>
+    <div class="ldrop" id="ldrop" onclick="document.getElementById('fin').click()">
+      <div class="ldrop-icon">📂</div>
+      <div class="ldrop-txt">Click to browse or drag &amp; drop</div>
+      <div class="ldrop-sub">Accepts .json (v1, v2, v3)</div>
+    </div>
+    <input type="file" id="fin" accept=".json" style="display:none" onchange="handleFile(this.files[0])">
+    
+    <div class="lprog" id="lprog"><span id="lmsg">Loading…</span>
+      <div class="lbar"><div class="lfill" id="lfill"></div></div></div>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="mapp" style="display:none">
+
+<!-- NAV -->
+<div class="nav" id="main-nav">
+  <div class="nav-title">Mouse Colony <span id="nav-sub">/ v1.0</span></div>
+  <div class="nt active" onclick="showTab('dashboard',this)">Dashboard</div>
+  <div class="nt" onclick="showTab('animals',this)">Animals</div>
+  <div class="nt" onclick="showTab('map',this)">Map</div>
+  <div class="nt" onclick="showTab('breeding',this)">Breeding</div>
+  <div class="nt" onclick="showTab('cages',this)">Cages</div>
+  <div class="nt" onclick="showTab('racks',this)">Spaces</div>
+  <div class="nt" onclick="showTab('evlog',this)">Event log</div>
+  <div class="nt" onclick="showTab('alerts',this)">Alerts <span id="al-badge" style="background:#fee2e2;color:#991b1b;border-radius:20px;padding:1px 5px;font-size:10px;margin-left:2px"></span></div>
+  <button id="settings-icon-btn" title="Settings" onclick="showTab('settings',this)" style="padding:4px 8px;font-size:15px;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;line-height:1;color:#777;transition:all .12s;margin-left:2px;align-self:stretch" onmouseover="this.style.color='#1a1a1a'" onmouseout="if(this.style.borderBottomColor!='rgb(26, 26, 26)')this.style.color='#777'">⚙</button>
+  <div class="nav-sp"></div>
+  <div class="nav-r">
+    <button class="btn btn-sm" id="undo-btn" onclick="undoLastEvent()" title="Undo last recorded event (Ctrl+Z)" style="display:none">↩ Undo</button>
+    <button class="btn btn-sm btn-green" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn btn-sm btn-blue" onclick="exportJSON()">⬇ JSON</button>
+    <button class="fbadge" onclick="reloadFile()" id="fbadge">📄 sample</button>
+    <span id="today-date" style="font-size:11px;color:#aaa"></span>
+  </div>
+</div>
+
+<!-- TIMELINE BAR -->
+<div class="tlbar" id="tlbar">
+  <button class="tl-live active" id="tl-live-btn" onclick="goLive()">● Live</button>
+  <span class="tl-label">Timeline</span>
+  <span id="tl-min-date" style="font-size:11px;color:#aaa;white-space:nowrap"></span>
+  <input type="range" class="tl-slider" id="tl-slider" min="0" max="100" value="100" oninput="onSlider(this.value)">
+  <span id="tl-max-date" style="font-size:11px;color:#aaa;white-space:nowrap"></span>
+  <div class="tl-sep"></div>
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:nowrap">
+    <input type="date" class="tl-input" id="tl-date-input" onchange="onDateInput()" title="Jump to date">
+    <input type="time" class="tl-input tl-input-time" id="tl-time-input" onchange="onDateInput()" title="Time" style="display:none">
+    <button class="tl-recbtn" onclick="openRecModal()">＋ Record event</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="main" id="mcontent">
+
+<!-- DASHBOARD -->
+<div class="section active" id="sec-dashboard">
+  <div class="tw" style="margin-bottom:16px">
+    <div class="thr"><div class="thtitle">Population over time</div></div>
+    <div style="padding:12px 8px 4px;position:relative">
+      <canvas id="pop-chart" style="width:100%;height:220px;display:block;cursor:crosshair"></canvas>
+    </div>
+  </div>
+  <div class="sg">
+    <div class="sc"><div class="sl">Total SNs</div><div class="snum c-bl" id="d-total"></div><div class="ss">all records</div></div>
+    <div class="sc"><div class="sl">Active</div><div class="snum c-gr" id="d-alive"></div><div class="ss">not expired</div></div>
+    <div class="sc"><div class="sl">Expired</div><div class="snum c-re" id="d-sac"></div><div class="ss">sac/dead/tx</div></div>
+    <div class="sc"><div class="sl">In experiment</div><div class="snum c-am" id="d-exp"></div><div class="ss">ongoing</div></div>
+    <div class="sc"><div class="sl">Events</div><div class="snum c-pu" id="d-evts"></div><div class="ss">total logged</div></div>
+    <div class="sc"><div class="sl">Cages in use</div><div class="snum c-te" id="d-cages"></div><div class="ss">active animals</div></div>
+  </div>
+  <div style="font-weight:600;font-size:13px;margin-bottom:8px">Protocol (active)</div>
+  <div class="pg" id="proto-grid"></div>
+  <div class="dash-grid">
+    <div class="tw"><div class="thr"><div class="thtitle">Sex distribution</div></div>
+      <div class="ts"><table><thead><tr><th>Protocol</th><th>M</th><th>F</th><th>?</th><th>Total</th></tr></thead><tbody id="sex-tbl"></tbody></table></div>
+    </div>
+    <div class="tw"><div class="thr"><div class="thtitle">Genotype summary (active)</div></div>
+      <div class="ts"><table><thead><tr><th>Locus</th><th>Status</th><th>Count</th><th>M</th><th>F</th></tr></thead><tbody id="geno-tbl"></tbody></table></div>
+    </div>
+  </div>
+  <div class="tw"><div class="thr"><div class="thtitle">Recent events</div></div>
+    <div class="ts"><table><thead><tr><th>Event time</th><th>Recorded at</th><th>By</th><th>Event</th><th>SN</th><th>Detail</th></tr></thead><tbody id="recent-evts"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ANIMALS -->
+<div class="section" id="sec-animals">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="sec-title" style="margin:0">Animals</div>
+  </div>
+  <div class="fr">
+    <span class="fl">Protocol:</span>
+    <button class="fb active" onclick="setF('proto','all',this)">All</button>
+    <button class="fb" onclick="setF('proto','SH3',this)">SH3</button>
+    <button class="fb" onclick="setF('proto','AC',this)">AC</button>
+    <button class="fb" onclick="setF('proto','SH3*AC',this)">SH3*AC</button>
+    <button class="fb" onclick="setF('proto','WT',this)">WT</button>
+    <button class="fb" onclick="setF('proto','ORC',this)">ORC</button>
+    <button class="fb" onclick="setF('proto','WTE2',this)">WTE2</button>
+    <span class="fl" style="margin-left:4px">Sex:</span>
+    <button class="fb active" onclick="setF('sex','all',this)">All</button>
+    <button class="fb" onclick="setF('sex','M',this)">M</button>
+    <button class="fb" onclick="setF('sex','F',this)">F</button>
+    <span class="fl" style="margin-left:4px">Status:</span>
+    <button class="fb active" onclick="setF('status','all',this)">All</button>
+    <button class="fb" onclick="setF('status','active',this)">Active</button>
+    <button class="fb" onclick="setF('status','expired',this)">Expired</button>
+    <button class="fb" onclick="setF('status','experiment',this)">Experiment</button>
+    <span class="fl" style="margin-left:4px">Origin:</span>
+    <button class="fb active" onclick="setF('origin','all',this)">All</button>
+    <button class="fb" onclick="setF('origin','born',this)">Born</button>
+    <button class="fb" onclick="setF('origin','transferred',this)">Transferred</button>
+    <button class="fb" onclick="setF('origin','purchased',this)">Purchased</button>
+    <input class="finput" placeholder="SN, cage, locus…" id="an-search" oninput="renderAnimals()" style="margin-left:auto;width:170px;height:28px;padding:4px 8px">
+  </div>
+  <!-- Animals view controls row -->
+  <div class="fr" id="an-view-controls" style="margin-bottom:8px;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="fl">Sort:</span>
+    <button class="fb" id="sort-old" onclick="setAnSort('old_first',this)">Oldest first</button>
+    <button class="fb active" id="sort-new" onclick="setAnSort('new_first',this)">Newest first</button>
+    <span style="width:1px;height:18px;background:#e0ddd6;display:inline-block;flex-shrink:0"></span>
+    <span class="fl">View:</span>
+    <button class="fb" id="view-flat" onclick="setAnView('flat',this)">Flat list</button>
+    <button class="fb active" id="view-litter" onclick="setAnView('litter',this)">Littermate groups</button>
+    <span id="an-count-inline" style="margin-left:auto;font-size:11px;color:#aaa"></span>
+  </div>
+  <div id="an-table-wrap" class="tw"><div class="ts-fixed" style="max-height:calc(100vh - 300px)">
+    <table style="min-width:900px" id="an-table">
+      <thead id="an-thead"><tr><th>SN</th><th>Origin</th><th>Protocol</th><th>Sex</th><th>DOB</th><th>Age</th><th>Cage</th><th>Genotype loci</th><th>Status</th><th>Expired</th><th>Remark</th></tr></thead>
+      <tbody id="an-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- CAGES -->
+<div class="section" id="sec-cages">
+  <div style="display:flex;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+    <div class="sec-title" style="margin:0">Cages <span id="cage-count" style="font-weight:400;font-size:12px;color:#aaa"></span></div>
+  </div>
+  <div class="fr">
+    <input class="finput" placeholder="Search cage…" id="cage-search" oninput="renderCages()" style="width:170px;height:28px;padding:4px 8px">
+    <button class="fb active" onclick="setCF('all',this)" style="margin-left:5px">All</button>
+    <button class="fb" onclick="setCF('active',this)">Active only</button>
+  </div>
+  <div class="tw"><div class="ts-fixed" style="max-height:calc(100vh - 280px)">
+    <table><thead><tr><th>Cage</th><th>Rack</th><th>Protocol(s)</th><th>Active M</th><th>Active F</th><th>Total</th><th>Expired</th><th>Genotype loci</th></tr></thead>
+    <tbody id="cage-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- BREEDING -->
+<div class="section" id="sec-breeding">
+  <div class="sec-title" style="display:flex;align-items:center;gap:12px">
+    Breeding pairs
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;color:#888;cursor:pointer;margin-left:auto">
+      <span>Show expired</span>
+      <label class="toggle"><input type="checkbox" id="breed-show-expired" onchange="renderBreeding()"><span class="tslider"></span></label>
+    </label>
+  </div>
+  <div id="breed-list"></div>
+</div>
+
+<!-- MAP -->
+<div class="section" id="sec-map">
+  <div class="fr" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;align-items:center" id="map-legend">
+    <button id="dual-view-btn" onclick="toggleDualView()" style="margin-left:auto;padding:3px 10px;font-size:11px;border:1px solid #ddd;border-radius:7px;background:#fff;cursor:pointer;color:#555;display:flex;align-items:center;gap:5px" title="Show two faces side-by-side">
+      <span style="font-size:12px">&#8644;</span> Dual View
+    </button>
+  </div>
+  <div id="map-single-view">
+    <div class="map-top-bar">
+      <div class="map-filter-group">
+        <span class="tl-label">Facility</span>
+        <select class="map-fsel" id="map-facility-sel" onchange="onMapFacilityChange()"></select>
+        <span class="tl-label" style="margin-left:6px">Room</span>
+        <select class="map-fsel" id="map-room-sel" onchange="onMapRoomChange()"></select>
+      </div>
+      <div class="minimap-strip" id="map-minimap"></div>
+    </div>
+    <div id="rack-map-wrap">
+      <div class="rack-faces" id="rack-map"></div>
+      <div class="map-info" id="map-info"></div>
+    </div>
+  </div>
+  <div id="map-dual-view" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+      <div style="border-right:2px solid #e8e6e0;padding-right:12px;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 8px;background:#f8f6f2;border-radius:7px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:#3B8BD4">Left</span>
+          <select class="map-fsel" id="dual-fac-l" onchange="onDualFacChange('l')"></select>
+          <select class="map-fsel" id="dual-room-l" onchange="onDualRoomChange('l')"></select>
+          <div class="minimap-strip" id="dual-minimap-l" style="flex:1;min-width:0;gap:4px"></div>
+        </div>
+        <div class="rack-faces" id="dual-rack-l" style="overflow:auto;max-height:calc(100vh - 270px)"></div>
+        <div class="map-info" id="dual-info-l"></div>
+      </div>
+      <div style="padding-left:12px;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 8px;background:#f8f6f2;border-radius:7px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:#D85A30">Right</span>
+          <select class="map-fsel" id="dual-fac-r" onchange="onDualFacChange('r')"></select>
+          <select class="map-fsel" id="dual-room-r" onchange="onDualRoomChange('r')"></select>
+          <div class="minimap-strip" id="dual-minimap-r" style="flex:1;min-width:0;gap:4px"></div>
+        </div>
+        <div class="rack-faces" id="dual-rack-r" style="overflow:auto;max-height:calc(100vh - 270px)"></div>
+        <div class="map-info" id="dual-info-r"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT LOG -->
+<div class="section" id="sec-evlog">
+  <div class="sec-title">Event log <span id="ev-total" style="font-weight:400;font-size:12px;color:#aaa"></span></div>
+  <div class="fr">
+    <span class="fl">Type:</span>
+    <button class="fb active" onclick="setEF('type','all',this)">All</button>
+    <button class="fb" onclick="setEF('type','born',this)">Born</button>
+    <button class="fb" onclick="setEF('type','transferred',this)">Transferred</button>
+    <button class="fb" onclick="setEF('type','purchased',this)">Purchased</button>
+    <button class="fb" onclick="setEF('type','dob_verified',this)">DOB verified</button>
+    <button class="fb" onclick="setEF('type','genotyped',this)">Genotyped</button>
+    <button class="fb" onclick="setEF('type','used',this)">Used</button>
+    <button class="fb" onclick="setEF('type','expired',this)">Expired</button>
+    <input class="finput" placeholder="SN, cage, locus…" id="ev-search" oninput="renderEvlog()" style="margin-left:auto;width:170px;height:28px;padding:4px 8px">
+  </div>
+  <div class="tw"><div class="ts-fixed" style="max-height:calc(100vh - 280px)">
+    <table style="min-width:750px"><thead><tr><th>Event time</th><th>Recorded at</th><th>By</th><th>Event</th><th>SN</th><th>Protocol</th><th>Cage</th><th>Detail</th></tr></thead>
+    <tbody id="ev-tbody"></tbody></table></div>
+    <div class="pager">
+      <button class="pb" id="ev-prev" onclick="changeEvPage(-1)">← Prev</button>
+      <span id="ev-page-info"></span>
+      <button class="pb" id="ev-next" onclick="changeEvPage(1)">Next →</button>
+      <span style="margin-left:auto" id="ev-show-info"></span>
+    </div>
+  </div>
+</div>
+
+<!-- RACKS -->
+<div class="section" id="sec-racks">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div class="sec-title" style="margin:0">Space management</div>
+    <button class="btn btn-primary" onclick="openSpaceModal(null)">＋ New space</button>
+  </div>
+  <div id="rack-list"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="section" id="sec-settings">
+  <div class="sec-title">Settings</div>
+
+  <div class="settings-section">
+    <div class="settings-title">1 · Recorder identity</div>
+    <div class="setting-row">
+      <div><div class="setting-label">Recorder name</div><div class="setting-desc">Saved with every new event you record</div></div>
+      <div class="setting-ctrl">
+        <input type="text" class="finput" id="set-name" placeholder="Your name or initials" oninput="saveSettings()">
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">2 · Timeline precision</div>
+    <div class="setting-row">
+      <div><div class="setting-label">Show time (HH:MM:SS) on timeline</div><div class="setting-desc">Default: off — events recorded at 00:00:00 when off</div></div>
+      <div class="setting-ctrl">
+        <label class="toggle"><input type="checkbox" id="set-showtime" onchange="applyTimelineSetting()"><span class="tslider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">3 · Cage address format</div>
+    <div class="setting-row">
+      <div><div class="setting-label">Address display order</div><div class="setting-desc">How cage addresses are shown in the UI</div></div>
+      <div class="setting-ctrl">
+        <select class="fsel" id="set-cageformat" onchange="saveSettings();refreshCurrentTab()">
+          <option value="col_row">Column + Row (e.g. H10) — default</option>
+          <option value="row_col">Row + Column (e.g. 10H) — original data format</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">5 · Display preferences</div>
+    <div class="setting-row">
+      <div><div class="setting-label">DOB display format</div><div class="setting-desc">How date + age are shown in map cards and breeding view</div></div>
+      <div class="setting-ctrl">
+        <select class="fsel" id="set-dobformat" onchange="saveSettings();refreshCurrentTab()">
+          <option value="age_date">Age (Date) — default</option>
+          <option value="date_age">Date (Age)</option>
+        </select>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Rack map: face display</div><div class="setting-desc">Show one face at a time or both faces side-by-side</div></div>
+      <div class="setting-ctrl">
+        <select class="fsel" id="set-facemode" onchange="saveSettings();if(activeRackId)renderRackMap(activeRackId);_renderMinimap()">
+          <option value="one">One face at a time — default</option>
+          <option value="both">Both faces side-by-side</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">6 · Protocol colors</div>
+    <div class="color-grid" id="color-grid"></div>
+    <div style="margin-top:10px">
+      <button class="btn btn-sm" onclick="resetColors()">Reset to defaults</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">7 · Animals view defaults</div>
+    <div class="setting-row">
+      <div><div class="setting-label">Default sort order</div><div class="setting-desc">Sort direction in Animals tab</div></div>
+      <div class="setting-ctrl">
+        <select class="fsel" id="set-sort" onchange="getViewState().sort=this.value;applyViewState();renderAnimals()">
+          <option value="old_first">Oldest first</option>
+          <option value="new_first">Newest first</option>
+        </select>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Default view mode</div><div class="setting-desc">How to display animals in list</div></div>
+      <div class="setting-ctrl">
+        <select class="fsel" id="set-viewmode" onchange="getViewState().mode=this.value;applyViewState();renderAnimals()">
+          <option value="flat">Flat list</option>
+          <option value="litter">Littermate groups</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div class="section" id="sec-alerts">
+  <div class="sec-title">Alerts</div>
+  <div id="alert-con"></div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- NEW EVENT MODAL -->
+<div class="mbg" id="modal-rec">
+  <div class="modal">
+    <div class="modal-title">Record new event</div>
+    <div class="form-row">
+      <div class="fg">
+        <label class="flabel">Event type *</label>
+        <select class="fsel" id="ne-type" onchange="onEvTypeChange()">
+          <option value="">— select —</option>
+          <option value="purchased">Purchased</option>
+          <option value="transferred">Transferred</option>
+          <option value="born">Born</option>
+          <option value="weaned">Weaned</option>
+          <option value="sexed">Sexed</option>
+          <option value="tagged">Tagged</option>
+          <option value="genotyped">Genotyped</option>
+          <option value="cage_assigned">Cage assigned</option>
+          <option value="used">Used</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flabel">Animal SN *</label>
+        <input class="finput" id="ne-sn" type="number" placeholder="e.g. 10200">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg">
+        <label class="flabel">Event time (when it happened) *</label>
+        <input class="finput" id="ne-event-time" type="datetime-local" oninput="updateTimeDiff()">
+        <div class="fnote">← When the event actually occurred</div>
+        <div class="fdiff" id="ne-timediff"></div>
+      </div>
+      <div class="fg">
+        <label class="flabel">Recorded at (system)</label>
+        <input class="finput" id="ne-recorded-at" type="datetime-local" readonly style="background:#f1f0ec;color:#888">
+        <div class="fnote">← Auto-filled: now</div>
+        <div class="fnote">Recorder: <b id="ne-recorder-name" style="color:#1a1a1a"></b></div>
+      </div>
+    </div>
+    <div id="ne-dynamic"></div>
+    <div id="ne-geno-sec" style="display:none">
+      <div class="flabel" style="margin-bottom:6px">Genotype loci</div>
+      <div class="loci-list" id="ne-loci"></div>
+      <button class="ladd" onclick="addLocusRow()">＋ Add locus</button>
+    </div>
+    <div class="faction">
+      <button class="btn" onclick="closeModal('modal-rec')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewEvent()">Save event</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPACE EDIT MODAL -->
+<div class="mbg" id="modal-rack">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title" id="rack-modal-title">Add space</div>
+    <div class="form-row">
+      <div class="fg">
+        <label class="flabel">Rack <span style="color:#bbb;font-weight:400;font-size:10px">number only (e.g. 2630)</span></label>
+        <input class="finput" id="rm-rack-num" placeholder="2630" oninput="updateSpacePreview()">
+      </div>
+      <div class="fg">
+        <label class="flabel">Face <span style="color:#bbb;font-weight:400;font-size:10px">number only (e.g. 1)</span></label>
+        <input class="finput" id="rm-face-num" placeholder="1" oninput="updateSpacePreview()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label class="flabel">Facility</label><input class="finput" id="rm-facility" placeholder="SAF"></div>
+      <div class="fg"><label class="flabel">Room</label><input class="finput" id="rm-room" placeholder="35"></div>
+    </div>
+    <div style="font-weight:600;font-size:12px;margin:10px 0 8px">Grid range</div>
+    <div class="form-row">
+      <div class="fg"><label class="flabel">Row start</label><input class="finput" id="rm-f1-rtop" placeholder="1"></div>
+      <div class="fg"><label class="flabel">Row end</label><input class="finput" id="rm-f1-rbot" placeholder="10"></div>
+      <div class="fg"><label class="flabel">Col start</label><input class="finput" id="rm-f1-cleft" placeholder="A"></div>
+      <div class="fg"><label class="flabel">Col end</label><input class="finput" id="rm-f1-cright" placeholder="G"></div>
+    </div>
+    <div id="rm-space-preview" style="font-size:11px;color:#888;margin-top:4px;padding:4px 8px;background:#f8f6f2;border-radius:4px;display:none"></div>
+    <input type="hidden" id="rm-edit-id">
+    <input type="hidden" id="rm-id">
+    <input type="hidden" id="rm-face-id">
+    <input type="hidden" id="rm-space-label">
+    <div class="faction">
+      <button class="btn" onclick="closeModal('modal-rack')">Cancel</button>
+      <button class="btn btn-red btn-sm" id="rm-delete-btn" onclick="deleteRack()" style="margin-right:auto;display:none">Delete</button>
+      <button class="btn btn-primary" onclick="saveRack()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="mtt" id="map-tt"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  BUILT-IN DATA
+// ═══════════════════════════════════════════════════════════════
+const BUILTIN_EVENTS  = [];
+const BUILTIN_RACKS   = [];
+const BUILTIN_SETTINGS= {};
+
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const ET={0:'purchased',1:'born',2:'dob_verified',3:'weaned',4:'sexed',5:'tagged',6:'genotyped',7:'cage_assigned',8:'used',9:'expired'};
+const ET_REV=Object.fromEntries(Object.entries(ET).map(([k,v])=>[v,+k]));
+const ET_LBL={0:'Purchased',1:'Born',2:'DOB verified',3:'Weaned',4:'Sexed',5:'Tagged',6:'Genotyped',7:'Cage assigned',8:'Used',9:'Expired'};
+const GENO_STATUS={WT:'Wildtype (+/+)',HT:'TG Hetero (+/-)',HM:'TG Homo (-/-)'};
+const DEFAULT_COLORS={SH3:'#3B8BD4',AC:'#1D9E75','SH3*AC':'#7F77DD',WT:'#888780',ORC:'#D85A30',WTE2:'#BA7517',ACHM:'#1D9E75',default:'#D4537E'};
+
+// ═══════════════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════
+let DB=[]; let EVLOG=[]; let CUTOFF=null;
+let ALL_DATES=[]; let RAW=[];
+let newEvents=[];
+
+function updateUndoBtn(){
+  const btn=document.getElementById('undo-btn');
+  if(!btn)return;
+  if(newEvents.length>0){
+    const last=newEvents[newEvents.length-1];
+    const bid=last.batch_id;
+    // Count how many events share this batch
+    const batchEvs=bid?newEvents.filter(e=>e.batch_id===bid):[ last ];
+    const label=last.event_type||'event';
+    const suffix=batchEvs.length>1?' ×'+batchEvs.length:'';
+    btn.style.display='';
+    btn.textContent='↩ Undo ('+label+suffix+')';
+  } else {
+    btn.style.display='none';
+  }
+}
+
+function undoLastEvent(){
+  if(!newEvents.length)return;
+  const last=newEvents[newEvents.length-1];
+  const bid=last.batch_id;
+  if(bid){
+    newEvents=newEvents.filter(e=>e.batch_id!==bid);
+  } else {
+    newEvents.pop();
+  }
+  updateUndoBtn();
+  initDB();
+  initMapData();
+  refreshCurrentTab();
+}
+
+// Ctrl+Z keyboard shortcut
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){
+    // Only if not typing in an input
+    if(document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){
+      e.preventDefault();
+      undoLastEvent();
+    }
+  }
+});
+let RACKS=[]; let SETTINGS={};
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS HELPERS
+// ═══════════════════════════════════════════════════════════════
+function initSettings(s){
+  SETTINGS=Object.assign({recorder_name:'',timeline_show_time:false,cage_addr_format:'col_row',dob_format:'age_date',face_mode:'one',colors:{...DEFAULT_COLORS},last_rack_id:null,view:{sort:'new_first',mode:'litter'}},s||{});
+  if(!SETTINGS.view)SETTINGS.view={sort:'new_first',mode:'litter'};
+  if(!SETTINGS.dob_format)SETTINGS.dob_format='age_date';
+  if(!SETTINGS.face_mode)SETTINGS.face_mode='one';
+  if(SETTINGS.last_rack_id)activeRackId=SETTINGS.last_rack_id;
+  if(!SETTINGS.colors)SETTINGS.colors={...DEFAULT_COLORS};
+  document.getElementById('set-name').value=SETTINGS.recorder_name||'';
+  document.getElementById('set-showtime').checked=!!SETTINGS.timeline_show_time;
+  document.getElementById('set-cageformat').value=SETTINGS.cage_addr_format||'col_row';
+  const dfEl=document.getElementById('set-dobformat');if(dfEl)dfEl.value=SETTINGS.dob_format||'age_date';
+  const fmEl=document.getElementById('set-facemode');if(fmEl)fmEl.value=SETTINGS.face_mode||'one';
+  applyTimelineSetting(false);
+  renderColorGrid();
+  applyColors();
+}
+function saveSettings(){
+  SETTINGS.recorder_name=document.getElementById('set-name').value.trim();
+  SETTINGS.timeline_show_time=document.getElementById('set-showtime').checked;
+  SETTINGS.cage_addr_format=document.getElementById('set-cageformat').value;
+  const dfEl=document.getElementById('set-dobformat');if(dfEl)SETTINGS.dob_format=dfEl.value;
+  const fmEl=document.getElementById('set-facemode');if(fmEl)SETTINGS.face_mode=fmEl.value;
+  if(!SETTINGS.view)SETTINGS.view={sort:'new_first',mode:'litter'};
+  const sEl=document.getElementById('set-sort');if(sEl)SETTINGS.view.sort=sEl.value;
+  const mEl=document.getElementById('set-viewmode');if(mEl)SETTINGS.view.mode=mEl.value;
+  applyColors();
+}
+function applyTimelineSetting(refresh=true){
+  const show=document.getElementById('set-showtime').checked;
+  SETTINGS.timeline_show_time=show;
+  document.getElementById('tl-time-input').style.display=show?'':'none';
+  if(refresh)refreshCurrentTab();
+}
+function renderColorGrid(){
+  const protos=Object.keys(SETTINGS.colors);
+  document.getElementById('color-grid').innerHTML=protos.map(p=>`
+    <div class="color-item">
+      <label>${p}</label>
+      <input type="color" value="${SETTINGS.colors[p]||'#888888'}" data-proto="${p}"
+        oninput="SETTINGS.colors[this.dataset.proto]=this.value;applyColors();renderDashboard();">
+    </div>`).join('');
+}
+function applyColors(){
+  // Update CSS for protocol color classes dynamically
+  let css='';
+  Object.entries(SETTINGS.colors).forEach(([p,c])=>{
+    const cls='.pcolor-'+p.replace(/[^a-zA-Z0-9]/g,'_');
+    css+=`${cls}{border-left-color:${c}!important}`;
+  });
+  let el=document.getElementById('dyn-colors');
+  if(!el){el=document.createElement('style');el.id='dyn-colors';document.head.appendChild(el);}
+  el.textContent=css;
+}
+function resetColors(){
+  SETTINGS.colors={...DEFAULT_COLORS};
+  renderColorGrid();applyColors();renderDashboard();
+}
+function protoColor(p){return(SETTINGS.colors&&SETTINGS.colors[p])||SETTINGS.colors.default||'#D4537E';}
+function protoCardClass(proto){return'pcolor-'+proto.replace(/[^a-zA-Z0-9]/g,'_');}
+
+// ═══════════════════════════════════════════════════════════════
+//  CAGE ADDRESS HELPERS
+// ═══════════════════════════════════════════════════════════════
+function fmtCage(row,col){
+  if(!row&&!col)return '';
+  if(!row)return col;if(!col)return row;
+  const fmt=SETTINGS.cage_addr_format||'col_row';
+  return fmt==='col_row'?col+row:row+col;
+}
+function fmtCageWithRack(row,col,rackId){
+  const cage=fmtCage(row,col);
+  if(!cage)return '';
+  const rack=rackId?getRackById(rackId):(getRackForCage(row,col));
+  if(!rack)return cage;
+  const rackNum=rack.rack_id.replace('RACK-','');
+  // Find which face this cage belongs to
+  let faceLabel='';
+  for(const face of rack.faces||[]){
+    const rows=genAxisValues(face.row_start,face.row_end);
+    const cols=genAxisValues(face.col_start,face.col_end);
+    if(rows.includes(String(row))&&cols.includes(String(col))){faceLabel=face.label;break;}
+  }
+  return `<span style="font-family:monospace">${cage}</span><span style="font-size:10px;color:#aaa;margin-left:4px">${rackNum}${faceLabel?' '+faceLabel:''}</span>`;
+}
+function parseCageStr(s){
+  if(!s)return{row:'',col:''};
+  const s2=s.trim();
+  let m=s2.match(/^(\d+)([A-Za-z]+)$/);
+  if(m)return{row:m[1],col:m[2]};
+  m=s2.match(/^([A-Za-z]+)(\d+)$/);
+  if(m)return{row:m[2],col:m[1]};
+  return{row:s2,col:''};
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RACK HELPERS
+// ═══════════════════════════════════════════════════════════════
+function genAxisValues(start, end){
+  // Generate array of axis values from start to end
+  // Handles: numeric ("1"-"10") or alpha ("A"-"G")
+  if(!start||!end)return[];
+  const isNum=/^\d+$/.test(start);
+  if(isNum){
+    const s=parseInt(start),e=parseInt(end);
+    if(s>e)return[];
+    return Array.from({length:e-s+1},(_,i)=>String(s+i));
+  } else {
+    // alpha
+    const code=v=>v.toUpperCase().charCodeAt(0);
+    const s=code(start[0]),e=code(end[0]);
+    if(s>e)return[];
+    return Array.from({length:e-s+1},(_,i)=>String.fromCharCode(s+i));
+  }
+}
+function getRackById(id){return RACKS.find(r=>r.rack_id===id);}
+function getRackForCage(row,col){
+  // Find which rack a cage (row,col) belongs to
+  for(const rack of RACKS){
+    for(const face of rack.faces||[]){
+      const rows=genAxisValues(face.row_start,face.row_end);
+      const cols=genAxisValues(face.col_start,face.col_end);
+      if(rows.includes(String(row))&&cols.includes(String(col)))return rack;
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILE LOADING
+// ═══════════════════════════════════════════════════════════════
+function setP(msg,pct){document.getElementById('lprog').style.display='block';document.getElementById('lmsg').textContent=msg;document.getElementById('lfill').style.width=pct+'%';}
+function showErr(m){const e=document.getElementById('lerr');e.style.display='block';e.textContent='⚠ '+m;}
+
+function handleFile(file){
+  if(!file)return;
+  document.getElementById('lerr').style.display='none';
+  if(!file.name.endsWith('.json')){showErr('Please select a .json file.');return;}
+  setP('Reading…',20);
+  const reader=new FileReader();
+  reader.onload=e=>{
+    setP('Parsing…',50);
+    try{
+      const data=JSON.parse(e.target.result);
+      loadData(data);
+      document.getElementById('fbadge').textContent='📄 '+file.name.slice(0,18);
+      document.getElementById('nav-sub').textContent='/ '+file.name.replace('.json','');
+      setP('Replaying…',80);
+      setTimeout(()=>{setP('Done!',100);setTimeout(initAndShow,200);},80);
+    }catch(ex){showErr('Parse error: '+ex.message);document.getElementById('lprog').style.display='none';}
+  };
+  reader.onerror=()=>showErr('Could not read file.');
+  reader.readAsText(file);
+}
+
+function loadData(data){
+  if(Array.isArray(data)){
+    RAW=data;RACKS=[...BUILTIN_RACKS];initSettings({...BUILTIN_SETTINGS});
+  } else if(data.events&&Array.isArray(data.events)){
+    // Full JSON format
+    RAW=fullToCompact(data.events);
+    if(data.new_events)newEvents=data.new_events;
+    RACKS=data.racks&&data.racks.length?data.racks:[...BUILTIN_RACKS];
+    initSettings(data.settings||{...BUILTIN_SETTINGS});
+  } else {
+    RAW=data;RACKS=[...BUILTIN_RACKS];initSettings({...BUILTIN_SETTINGS});
+  }
+}
+
+function loadBuiltin(){}
+
+function reloadFile(){
+  DB=null;EVLOG=[];newEvents=[];updateUndoBtn();
+  document.getElementById('lscreen').style.display='flex';
+  document.getElementById('mapp').style.display='none';
+  document.getElementById('lprog').style.display='none';
+  document.getElementById('lerr').style.display='none';
+}
+
+function initAndShow(){
+  initDB();
+  document.getElementById('lscreen').style.display='none';
+  document.getElementById('mapp').style.display='flex';
+  initTimeline();
+  renderDashboard();renderAlerts();
+  document.querySelectorAll('.nt').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelector('.nt').classList.add('active');
+  document.getElementById('sec-dashboard').classList.add('active');
+}
+
+const ldrop=document.getElementById('ldrop');
+ldrop.addEventListener('dragover',e=>{e.preventDefault();ldrop.classList.add('drag-on');});
+ldrop.addEventListener('dragleave',()=>ldrop.classList.remove('drag-on'));
+ldrop.addEventListener('drop',e=>{e.preventDefault();ldrop.classList.remove('drag-on');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+
+// ═══════════════════════════════════════════════════════════════
+//  COMPACT FORMAT v3
+//  [type, event_time, recorded_at_or_empty, recorded_by, sn, ...fields]
+//  type 5: fields=[loci_flat, geno_display, cage, cage_row, cage_col]
+//  others: cage fields at end [cage, cage_row, cage_col]
+// ═══════════════════════════════════════════════════════════════
+function fullToCompact(events){
+  return events.map(e=>{
+    const t=ET_REV[e.event_type];if(t===undefined)return null;
+    const et=e.event_time,ra=e.recorded_at===e.event_time?'':e.recorded_at,rb=e.recorded_by||'',sn=e.sn,p=e.payload||{};
+    const cr=p.cage_row||'',cc=p.cage_col||'',c=p.cage||'',ri=p.rack_id||'';
+    if(t===0)return[t,et,ra,rb,sn,p.protocol||'',p.source||'',p.sex||'',c,cr,cc,ri,p.remark||''];
+    if(t===1)return[t,et,ra,rb,sn,p.protocol||'',p.sire_sn||0,p.dam_sn||0,p.mating_id||'',c,cr,cc,ri];
+    if(t===2)return[t,et,ra,rb,sn,p.source||'',p.dob||'',c,cr,cc,ri];
+    if(t===3)return[t,et,ra,rb,sn,c,cr,cc,ri];
+    if(t===4)return[t,et,ra,rb,sn,p.sex||'',c,cr,cc,ri];
+    if(t===5)return[t,et,ra,rb,sn,p.tag_id||'',c,cr,cc,ri];
+    if(t===6){const lf=[];(p.loci||[]).forEach(l=>{lf.push(l.locus,l.status);});return[t,et,ra,rb,sn,lf,p.geno_display||'',c,cr,cc,ri];}
+    if(t===7)return[t,et,ra,rb,sn,c,cr,cc,ri];
+    if(t===8){
+      if(p.mating_id!==undefined){
+        // Mating sub-type: [8, et, ra, rb, sn, "mating", mating_id, mating_proto, cage_status, cage, cage_row, cage_col, rack_id]
+        return[t,et,ra,rb,sn,'mating',p.mating_id||'',p.mating_proto||'',p.cage_status||'',c,cr,cc,ri];
+      }
+      // Experiment sub-type
+      return[t,et,ra,rb,sn,p.experiment||'',p.remark||'',c,cr,cc,ri];
+    }
+    if(t===9)return[t,et,ra,rb,sn,p.from_status||'',p.to_status||'',p.remark||'',c,cr,cc,ri];
+    return null;
+  }).filter(Boolean);
+}
+function compactToFull(compact){
+  return compact.map((e,i)=>{
+    const[type,et,ra_raw,rb,sn,...fields]=e;
+    const ra=ra_raw||et;
+    let p={};
+    const cageFields=(f,start)=>({cage:f[start]||'',cage_row:f[start+1]||'',cage_col:f[start+2]||'',rack_id:f[start+3]||''});
+    if(type===0){p={protocol:fields[0],source:fields[1],sex:fields[2],...cageFields(fields,3),remark:fields[7]||fields[6]||''};}
+    else if(type===1){p={protocol:fields[0],sire_sn:fields[1],dam_sn:fields[2],mating_id:fields[3],...cageFields(fields,4)};}
+    else if(type===2){p={source:fields[0],dob:fields[1],...cageFields(fields,2)};}
+    else if(type===3){p=cageFields(fields,0);}
+    else if(type===4){p={sex:fields[0],...cageFields(fields,1)};}
+    else if(type===5){p={tag_id:fields[0],...cageFields(fields,1)};}
+    else if(type===6){const lf=fields[0]||[];const loci=[];for(let j=0;j<lf.length;j+=2)if(lf[j])loci.push({locus:lf[j],status:lf[j+1]||'WT'});p={loci,geno_display:fields[1]||'',...cageFields(fields,2)};}
+    else if(type===7){p=cageFields(fields,0);}
+    else if(type===8){
+      if(fields[0]==='mating'){
+        // Mating sub-type: fields=[mating, mating_id, mating_proto, cage_status, cage, cage_row, cage_col, rack_id]
+        p={mating_id:fields[1]||'',mating_proto:fields[2]||'',cage_status:fields[3]||'',...cageFields(fields,4)};
+      } else {
+        p={experiment:fields[0],remark:fields[1]||'',...cageFields(fields,2)};
+      }
+    }
+    else if(type===9){p={from_status:fields[0],to_status:fields[1],remark:fields[2]||'',...cageFields(fields,3)};}
+    return{event_id:'E'+String(i+1).padStart(5,'0'),event_type:ET[type],event_time:et,recorded_at:ra,recorded_by:rb,sn,payload:p};
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT REPLAY ENGINE
+// ═══════════════════════════════════════════════════════════════
+function replayEvents(cutoffISO){
+  const state={};const processed=[];
+  const all=[...RAW,...fullToCompact(newEvents)];
+  all.sort((a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:0);
+  for(const ev of all){
+    const[type,et,ra_raw,rb,sn,...fields]=ev;
+    if(cutoffISO&&et>cutoffISO)continue;
+    const ra=ra_raw||et;
+    if(!state[sn])state[sn]={sn,proto:'',sex:'?',dob:'',cage:'',cage_row:'',cage_col:'',rack_id:'',loci:[],geno_display:'',sire:0,dam:0,mating_id:'',origin:'',status:'active',expired_date:'',exp_start:'',remark:'',tag_id:'',source:'',dob_source:''};
+    const s=state[sn];
+    const getCage=(f,i)=>{const c=f[i]||'',cr=f[i+1]||'',cc=f[i+2]||'',ri=f[i+3]||'';const rack=ri?{rack_id:ri}:(getRackForCage(cr,cc)||{rack_id:''});return[c,cr,cc,rack.rack_id||''];};
+    if(type===0){[s.proto,s.source,s.sex]=fields;[s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,3);s.remark=fields[7]||fields[6]||'';s.dob=et.slice(0,10);s.origin=(s.source==='SAF')?'transferred':'purchased';s.unweaned=false;}
+    else if(type===1){
+      s.proto=fields[0];s.sire=fields[1];s.dam=fields[2];s.mating_id=fields[3];
+      s.dob=et.slice(0,10);s.origin='born';s.unweaned=true;
+      // Place pup in parent's cage (sire preferred, dam fallback)
+      const parentSN=s.sire&&state[s.sire]?s.sire:(s.dam&&state[s.dam]?s.dam:0);
+      if(parentSN&&state[parentSN]){
+        const p=state[parentSN];
+        s.cage=p.cage;s.cage_row=p.cage_row;s.cage_col=p.cage_col;s.rack_id=p.rack_id;
+      } else {
+        // fallback: use cage fields from born event if present
+        const fc=getCage(fields,4);if(fc[1])s.cage=fc[0],s.cage_row=fc[1],s.cage_col=fc[2],s.rack_id=fc[3];
+      }
+    }
+    else if(type===2){
+      // dob_verified: fields=[source, dob, cage_addr, row, col, rack]
+      s.dob_source=fields[0]||'';
+      if(fields[1])s.dob=fields[1];  // update dob if provided
+    }
+    else if(type===3){[s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,0);s.unweaned=false;}
+    else if(type===4){s.sex=fields[0];[s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,1);}
+    else if(type===5){s.tag_id=fields[0];[s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,1);}
+    else if(type===6){
+      const lf=fields[0]||[];const loci=[];
+      for(let j=0;j<lf.length;j+=2)if(lf[j])loci.push({locus:lf[j],status:lf[j+1]||'WT'});
+      s.loci=loci;s.geno_display=fields[1]||'';[s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,2);
+    }
+    else if(type===7){[s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,0);}
+    else if(type===8){
+      s.exp_start=et;
+      s.remark=fields[1]||s.remark;
+      // Mating:     fields=[experiment, pair, mating_proto, cage_status, cage_addr, row, col, rack]  → cage @ 4
+      // Non-mating: fields=[experiment, remark, '', cage_addr, row, col, rack]                       → cage @ 3
+      const isMatingEv=(fields[0]==='mating');
+      const cageOffset=isMatingEv?4:3;
+      [s.cage,s.cage_row,s.cage_col,s.rack_id]=getCage(fields,cageOffset);
+    }
+    else if(type===9){
+      // fields = [from_status, to_status, remark, cage_addr, row, col, rack]
+      const toStatus=fields[1]||'expired';
+      s.status=toStatus;
+      const TERMINAL_SET=new Set(['death','sacrificed','collected','expired']);
+      if(TERMINAL_SET.has(toStatus))s.expired_date=et.slice(0,10);
+      s.remark=fields[2]||s.remark;
+    }
+    processed.push({type,et,ra,rb,sn,fields,proto:s.proto});
+  }
+  return{animals:Object.values(state),events:processed};
+}
+
+function initDB(){
+  const{animals,events}=replayEvents(CUTOFF);
+  const snP={};animals.forEach(a=>{snP[a.sn]=a.proto;});
+  EVLOG=events.map(e=>({...e,proto:snP[e.sn]||e.proto}));
+  DB=animals;
+  const ds=new Set();
+  [...RAW,...fullToCompact(newEvents)].forEach(e=>{if(e[1])ds.add(e[1].slice(0,10));});
+  ALL_DATES=[...ds].sort();
+  // ev-badge removed
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TIMELINE
+// ═══════════════════════════════════════════════════════════════
+function initTimeline(){
+  const sl=document.getElementById('tl-slider');
+  sl.max=ALL_DATES.length;sl.value=ALL_DATES.length;
+  if(ALL_DATES.length>0){
+    document.getElementById('tl-min-date').textContent=ALL_DATES[0];
+    document.getElementById('tl-max-date').textContent=ALL_DATES[ALL_DATES.length-1];
+  }
+  // Set date input to today or last date
+  const todayStr=new Date().toISOString().slice(0,10);
+  document.getElementById('tl-date-input').value=todayStr;
+  if(!SETTINGS.timeline_show_time) document.getElementById('tl-time-input').value='00:00';
+  updateSliderGradient(ALL_DATES.length);
+  updateTlDisplay(ALL_DATES.length);
+  document.getElementById('tl-live-btn').classList.add('active');
+}
+
+function onSlider(val){
+  const idx=parseInt(val);
+  updateTlDisplay(idx);
+  if(idx>=ALL_DATES.length){
+    CUTOFF=null;
+    document.getElementById('tl-live-btn').classList.add('active');
+    // Update date input to today
+    document.getElementById('tl-date-input').value=new Date().toISOString().slice(0,10);
+  } else {
+    const d=ALL_DATES[idx]||ALL_DATES[ALL_DATES.length-1];
+    CUTOFF=d+'T23:59:59';
+    document.getElementById('tl-date-input').value=d;
+    document.getElementById('tl-live-btn').classList.remove('active');
+  }
+  updateSliderGradient(idx);
+  initDB();refreshCurrentTab();
+}
+
+function onDateInput(){
+  const d=document.getElementById('tl-date-input').value;
+  const t=SETTINGS.timeline_show_time?document.getElementById('tl-time-input').value:'23:59';
+  if(!d)return;
+  const cutoffStr=d+'T'+(t||'23:59')+':59';
+  CUTOFF=cutoffStr;
+  document.getElementById('tl-live-btn').classList.remove('active');
+  // Find closest date index for slider
+  let idx=ALL_DATES.findIndex(x=>x>d);
+  if(idx===-1)idx=ALL_DATES.length;
+  const sl=document.getElementById('tl-slider');
+  sl.value=idx;
+  updateSliderGradient(idx);
+  updateTlDisplay(idx);
+  initDB();refreshCurrentTab();
+}
+
+function updateTlDisplay(idx){
+  const el=document.getElementById('tl-evcount');
+  if(el)el.textContent=EVLOG.length+' events';
+}
+
+function updateSliderGradient(idx){
+  const pct=ALL_DATES.length>0?(idx/ALL_DATES.length)*100:100;
+  const sl=document.getElementById('tl-slider');
+  sl.style.background=`linear-gradient(to right,#3B8BD4 0%,#3B8BD4 ${pct}%,#e0ddd6 ${pct}%,#e0ddd6 100%)`;
+}
+
+function goLive(){
+  CUTOFF=null;
+  const sl=document.getElementById('tl-slider');
+  sl.value=ALL_DATES.length;
+  updateSliderGradient(ALL_DATES.length);
+  document.getElementById('tl-live-btn').classList.add('active');
+  document.getElementById('tl-date-input').value=new Date().toISOString().slice(0,10);
+  initDB();refreshCurrentTab();
+}
+
+function getCurrentTlISO(){
+  // Get current timeline datetime as ISO string for event_time default
+  const d=document.getElementById('tl-date-input').value||new Date().toISOString().slice(0,10);
+  const t=SETTINGS.timeline_show_time?(document.getElementById('tl-time-input').value||'00:00'):'00:00';
+  return d+'T'+t+':00';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  NEW EVENT MODAL
+// ═══════════════════════════════════════════════════════════════
+function openRecModal(){
+  // Block if timeline is not Live — can't record events in a historical view
+  if(CUTOFF){
+    const futureExists=[...RAW,...fullToCompact(newEvents)].some(e=>e[1]>CUTOFF);
+    if(futureExists){
+      alert('Cannot record events: you are viewing a past state and future events already exist.\n\nClick ● Live to return to the present before recording.');
+      return;
+    }
+  }
+  const now=new Date();
+  const sysISO=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  const tlISO=getCurrentTlISO().slice(0,16);
+  document.getElementById('ne-event-time').value=tlISO;
+  document.getElementById('ne-recorded-at').value=sysISO;
+  document.getElementById('ne-type').value='';
+  document.getElementById('ne-sn').value='';
+  document.getElementById('ne-dynamic').innerHTML='';
+  document.getElementById('ne-geno-sec').style.display='none';
+  document.getElementById('ne-loci').innerHTML='';
+  document.getElementById('ne-timediff').textContent='';
+  document.getElementById('ne-recorder-name').textContent=SETTINGS.recorder_name||'(not set)';
+  document.getElementById('modal-rec').classList.add('open');
+}
+function updateTimeDiff(){
+  const et=document.getElementById('ne-event-time').value;
+  const ra=document.getElementById('ne-recorded-at').value;
+  if(!et||!ra)return;
+  const diff=Math.round((new Date(ra)-new Date(et))/60000);
+  const el=document.getElementById('ne-timediff');
+  if(diff===0)el.textContent='Recorded immediately';
+  else if(diff>0)el.textContent=`Recorded ${diff} min after event`;
+  else el.textContent=`Event ${-diff} min in future`;
+}
+function g(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function onEvTypeChange(){
+  const type=g('ne-type');
+  const dyn=document.getElementById('ne-dynamic');
+  const geo=document.getElementById('ne-geno-sec');
+  geo.style.display='none';
+  const cageField=`<div class="form-row">
+    <div class="fg"><label class="flabel">Cage (display)</label><input class="finput" id="nd-cage" placeholder="e.g. H10 or 10H" oninput="autoSplitCage()"></div>
+    <div class="fg"><label class="flabel">Row</label><input class="finput" id="nd-cage-row" placeholder="e.g. 10"></div>
+    <div class="fg"><label class="flabel">Col</label><input class="finput" id="nd-cage-col" placeholder="e.g. H"></div>
+  </div>`;
+  const fields={
+    purchased:`<div class="form-row"><div class="fg"><label class="flabel">Protocol</label><input class="finput" id="nd-proto"></div>
+      <div class="fg"><label class="flabel">Source</label><input class="finput" id="nd-source"></div></div>
+      <div class="form-row"><div class="fg"><label class="flabel">Sex</label><select class="fsel" id="nd-sex"><option value="">?</option><option>M</option><option>F</option></select></div>
+      <div class="fg"><label class="flabel">Remark</label><input class="finput" id="nd-remark"></div></div>${cageField}`,
+    born:`<div class="form-row"><div class="fg"><label class="flabel">Protocol</label><input class="finput" id="nd-proto"></div>
+      <div class="fg"><label class="flabel">Mating ID</label><input class="finput" id="nd-mating"></div></div>
+      <div class="form-row"><div class="fg"><label class="flabel">Sire SN</label><input class="finput" id="nd-sire" type="number"></div>
+      <div class="fg"><label class="flabel">Dam SN</label><input class="finput" id="nd-dam" type="number"></div></div>${cageField}`,
+    sexed:`<div class="form-row"><div class="fg"><label class="flabel">Sex</label><select class="fsel" id="nd-sex"><option>M</option><option>F</option></select></div></div>${cageField}`,
+    tagged:`<div class="form-row"><div class="fg"><label class="flabel">Tag ID</label><input class="finput" id="nd-tag"></div></div>${cageField}`,
+    genotyped:cageField,
+    weaned:cageField,cage_assigned:cageField,
+    experiment_start:`<div class="fg"><label class="flabel">Experiment</label><input class="finput" id="nd-exp"></div>
+      <div class="form-row"><div class="fg"><label class="flabel">Remark</label><input class="finput" id="nd-remark"></div></div>${cageField}`,
+    expired:`<div class="form-row"><div class="fg"><label class="flabel">Reason</label><select class="fsel" id="nd-reason">
+      <option>sacrificed</option><option>dead</option><option>transferred</option><option>collected</option></select></div>
+      <div class="fg"><label class="flabel">Remark</label><input class="finput" id="nd-remark"></div></div>${cageField}`,
+  };
+  dyn.innerHTML=fields[type]||'';
+  if(type==='genotyped'){geo.style.display='block';if(!document.getElementById('ne-loci').children.length)addLocusRow();}
+}
+function autoSplitCage(){
+  const val=g('nd-cage');
+  const p=parseCageStr(val);
+  if(p.row)document.getElementById('nd-cage-row').value=p.row;
+  if(p.col)document.getElementById('nd-cage-col').value=p.col;
+}
+function addLocusRow(){
+  const list=document.getElementById('ne-loci');
+  const row=document.createElement('div');row.className='lrow';
+  row.innerHTML=`<input class="finput" placeholder="Locus (e.g. Shank3)" style="flex:1">
+    <select class="fsel" style="width:140px"><option value="WT">WT — Wildtype</option><option value="HT" selected>HT — TG Hetero</option><option value="HM">HM — TG Homo</option></select>
+    <button class="ldel" onclick="this.parentElement.remove()">✕</button>`;
+  list.appendChild(row);
+}
+function saveNewEvent(){
+  const type=g('ne-type'),sn=parseInt(g('ne-sn'));
+  let et=g('ne-event-time'),ra=g('ne-recorded-at');
+  if(!type){alert('Select event type.');return;}
+  if(!sn||isNaN(sn)){alert('Enter valid SN.');return;}
+  if(!et){alert('Set event time.');return;}
+  if(!SETTINGS.timeline_show_time){et=et.slice(0,10)+'T00:00:00';}
+  else{if(et.length===16)et+=':00';}
+  if(ra.length===16)ra+=':00';
+  const rb=SETTINGS.recorder_name||'';
+  const cage=g('nd-cage')||'',cage_row=g('nd-cage-row')||'',cage_col=g('nd-cage-col')||'';
+  let payload={cage,cage_row,cage_col};
+  if(type==='purchased'){Object.assign(payload,{protocol:g('nd-proto'),source:g('nd-source'),sex:g('nd-sex'),remark:g('nd-remark')});}
+  else if(type==='born'){Object.assign(payload,{protocol:g('nd-proto'),sire_sn:+g('nd-sire')||0,dam_sn:+g('nd-dam')||0,mating_id:g('nd-mating')});}
+  else if(type==='sexed'){payload.sex=g('nd-sex');}
+  else if(type==='tagged'){payload.tag_id=g('nd-tag');}
+  else if(type==='genotyped'){
+    const rows=document.getElementById('ne-loci').querySelectorAll('.lrow');
+    const loci=[];rows.forEach(r=>{const ins=r.querySelectorAll('input,select');if(ins[0].value.trim())loci.push({locus:ins[0].value.trim(),status:ins[1].value});});
+    payload.loci=loci;payload.geno_display=loci.map(l=>l.locus+'_'+l.status).join(' / ');
+  }
+  else if(type==='experiment_start'){payload.experiment=g('nd-exp');payload.remark=g('nd-remark');}
+  else if(type==='expired'){payload.reason=g('nd-reason');payload.remark=g('nd-remark');}
+  newEvents.push({event_id:'NEW_'+Date.now(),event_type:type,event_time:et,recorded_at:ra,recorded_by:rb,sn,payload});
+  updateUndoBtn();
+  closeModal('modal-rec');
+  const ds=g('ne-event-time').slice(0,10);
+  if(!ALL_DATES.includes(ds)){ALL_DATES.push(ds);ALL_DATES.sort();document.getElementById('tl-slider').max=ALL_DATES.length;}
+  initDB();initTimeline();refreshCurrentTab();
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.mbg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');}));
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+const TERMINAL_STATUS=new Set(['death','sacrificed','collected','expired']);
+function isExpired(a){return TERMINAL_STATUS.has(a.status);}
+function isActive(a){return !isExpired(a);}
+function ageWeeks(dob){if(!dob)return '-';const p=dob.split('-');if(p.length<3)return '-';let yr=parseInt(p[0]);if(yr<100)yr+=2000;const born=new Date(yr,parseInt(p[1])-1,parseInt(p[2]));const days=Math.floor((Date.now()-born)/86400000);if(days<0)return '-';const w=Math.floor(days/7),d=days%7;const pnd='P'+days;const wstr=w>0?w+'w ':'' ;const dstr=d>0||w===0?d+'d ':'';return(wstr+dstr+'('+pnd+')').trim();}
+function ageDays(dob){if(!dob)return -1;const p=dob.split('-');if(p.length<3)return -1;let yr=parseInt(p[0]);if(yr<100)yr+=2000;return Math.floor((Date.now()-new Date(yr,parseInt(p[1])-1,parseInt(p[2])))/86400000);}
+// Format DOB respecting dob_format setting:
+//   'age_date' (default) → "94w 0d (P658) (6/11/24)"
+//   'date_age'           → "6/11/24 (94w 0d P658)"
+function fmtDobAge(dob){
+  if(!dob||dob==='')return '—';
+  const dateStr=fmtDateShort(dob);
+  const days=ageDays(dob);
+  if(days<0)return dateStr;
+  const w=Math.floor(days/7),r=days%7;
+  const wPart=w>0?w+'w ':'';
+  const dPart=(r>0||w===0)?r+'d ':'';
+  const ageStr=(wPart+dPart).trim()+' (P'+days+')';
+  const fmt=(SETTINGS&&SETTINGS.dob_format)||'age_date';
+  return fmt==='date_age'?dateStr+' ('+ageStr+')':ageStr+' ('+dateStr+')';
+}
+function fmtDate(s){if(!s||s==='')return '-';const p=s.split('-');if(p.length<3)return s;let yr=parseInt(p[0]);if(yr<100)yr+=2000;const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mn[parseInt(p[1])-1]+' '+parseInt(p[2])+', '+yr;}
+function fmtDateShort(s){if(!s||s==='')return '-';const p=s.split('-');if(p.length<3)return s;let yr=parseInt(p[0]);if(yr<100)yr+=2000;return parseInt(p[1])+'/'+parseInt(p[2])+'/'+String(yr).slice(-2);}
+function fmtDT(s){if(!s)return '-';const show=SETTINGS.timeline_show_time;const date=fmtDate(s.slice(0,10));const t=s.slice(11,16);return date+(show&&t&&t!=='00:00'?' '+t:'');}
+function lociHTML(loci){
+  if(!loci||!loci.length)return '<span style="color:#ccc;font-size:11px">—</span>';
+  return '<div class="geno-loci">'+loci.map(l=>`<span class="gl gl-${l.status}" title="${GENO_STATUS[l.status]||l.status}">${l.locus} ${l.status}</span>`).join('')+'</div>';
+}
+function statusBadge(a){
+  if(isExpired(a))return'<span class="badge bdead">Expired</span>';
+  if(a.exp_start)return'<span class="badge bexp">Experiment</span>';
+  return'<span class="badge balive">Active</span>';
+}
+function originBadge(o){return o==='purchased'?'<span class="badge bbuy">Purchased</span>':o==='transferred'?'<span class="badge btrans">Transferred</span>':'<span class="badge bborn">Born</span>';}
+function evBadge(type){
+  const C={0:'#581c87',1:'#3730a3',2:'#065f46',3:'#78350f',4:'#831843',5:'#14532d',6:'#1e3a8a',7:'#1e40af',8:'#713f12',9:'#7f1d1d'};
+  const B={0:'#f3e8ff',1:'#e0e7ff',2:'#d1fae5',3:'#fef3c7',4:'#fce7f3',5:'#f0fdf4',6:'#eff6ff',7:'#dbeafe',8:'#fef9c3',9:'#fee2e2'};
+  return`<span style="background:${B[type]||'#f1f0ec'};color:${C[type]||'#6b7280'};padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">${ET_LBL[type]||''}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════
+function showTab(t,el){
+  document.querySelectorAll('.nt').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  // Reset gear icon style
+  const gearBtn=document.getElementById('settings-icon-btn');
+  if(gearBtn){gearBtn.style.color='#777';gearBtn.style.borderBottomColor='transparent';}
+  if(t==='settings'){
+    if(gearBtn){gearBtn.style.color='#1a1a1a';gearBtn.style.borderBottomColor='#1a1a1a';}
+  } else {
+    el.classList.add('active');
+  }
+  document.getElementById('sec-'+t).classList.add('active');
+  const fn={dashboard:renderDashboard,animals:renderAnimals,cages:renderCages,breeding:renderBreeding,map:renderMap,evlog:renderEvlog,racks:renderRacks,settings:renderSettingsTab,alerts:renderAlerts};
+  if(fn[t])fn[t]();
+}
+function refreshCurrentTab(){
+  const a=document.querySelector('.section.active');
+  if(!a)return;
+  const t=a.id.replace('sec-','');
+  const fn={dashboard:renderDashboard,animals:renderAnimals,cages:renderCages,breeding:renderBreeding,map:renderMap,evlog:renderEvlog,racks:renderRacks,alerts:renderAlerts};
+  if(fn[t])fn[t]();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Population Chart ────────────────────────────────────────
+function buildPopChart(){
+  const canvas=document.getElementById('pop-chart');
+  if(!canvas)return;
+
+  // ── Build time-series data ──
+  // Collect all event dates (sorted) that change population counts
+  // We simulate forward: for each unique date, replay state up to that date
+  const allEvs=[...RAW,...fullToCompact(newEvents)]
+    .filter(e=>e[1]&&e[1]!=='0000-00-00')
+    .sort((a,b)=>a[1]<b[1]?-1:1);
+
+  // Get all unique change-dates (birth, purchase, expire events)
+  const changeDates=[...new Set(
+    allEvs.filter(e=>[0,1,9].includes(e[0])).map(e=>e[1].slice(0,10))
+  )].sort();
+
+  if(!changeDates.length)return;
+
+  // Add today
+  const today=new Date().toISOString().slice(0,10);
+  if(changeDates[changeDates.length-1]!==today)changeDates.push(today);
+
+  // For each date, compute alive count per protocol by replaying events up to that date
+  const protos=[...new Set(allEvs.filter(e=>e[0]===0||e[0]===1).map(e=>e[5]))].sort();
+
+  // Build animal birth and expiry dates from events
+  const animalProto={},animalBorn={},animalExpired={};
+  allEvs.forEach(ev=>{
+    const sn=ev[4],t=ev[0],d=ev[1]?ev[1].slice(0,10):'';
+    if(t===0){animalProto[sn]=ev[5];animalBorn[sn]=d;}
+    else if(t===1){animalProto[sn]=ev[5];animalBorn[sn]=d;}
+    else if(t===9){if(!animalExpired[sn])animalExpired[sn]=d;}
+  });
+
+  // For each date, count alive total and per-proto
+  const series={total:[]}; // total + per-proto
+  protos.forEach(p=>{series[p]=[];});
+  const sns=Object.keys(animalBorn);
+
+  changeDates.forEach(dt=>{
+    let tot=0;
+    const pCnt={};
+    protos.forEach(p=>pCnt[p]=0);
+    sns.forEach(sn=>{
+      const born=animalBorn[sn],exp=animalExpired[sn],proto=animalProto[sn]||'';
+      if(!born||born>dt)return;
+      if(exp&&exp<=dt)return;
+      tot++;
+      if(pCnt[proto]!==undefined)pCnt[proto]++;
+    });
+    series.total.push(tot);
+    protos.forEach(p=>series[p].push(pCnt[p]||0));
+  });
+
+  // Filter protos that ever had > 0 animals
+  const activeProtos=protos.filter(p=>series[p].some(v=>v>0));
+
+  // ── Draw on canvas ──
+  const PR=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth-16;
+  const H=220;
+  canvas.width=W*PR; canvas.height=H*PR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(PR,PR);
+
+  const PAD={t:14,r:20,b:36,l:46};
+  const cw=W-PAD.l-PAD.r, ch=H-PAD.t-PAD.b;
+  const n=changeDates.length;
+  const maxY=Math.max(...series.total,10);
+
+  function xOf(i){return PAD.l+i/(n-1)*cw;}
+  function yOf(v){return PAD.t+ch-(v/maxY*ch);}
+
+  // Grid & axis
+  ctx.clearRect(0,0,W,H);
+  // Monthly 1st-day vertical gridlines
+  const _dateFirst=new Date(changeDates[0]+'T00:00:00');
+  const _dateLast=new Date(changeDates[n-1]+'T00:00:00');
+  const _spanMs=_dateLast-_dateFirst;
+  ctx.strokeStyle='#e8e5df'; ctx.lineWidth=1; ctx.setLineDash([]);
+  let _mc=new Date(_dateFirst.getFullYear(),_dateFirst.getMonth(),1);
+  while(_mc<=_dateLast){
+    const _frac=(_mc-_dateFirst)/_spanMs;
+    if(_frac>=0&&_frac<=1){
+      const _mx=PAD.l+_frac*cw;
+      ctx.beginPath(); ctx.moveTo(_mx,PAD.t); ctx.lineTo(_mx,PAD.t+ch); ctx.stroke();
+    }
+    _mc=new Date(_mc.getFullYear(),_mc.getMonth()+1,1);
+  }
+  ctx.strokeStyle='#f0ede8'; ctx.lineWidth=1;
+  const yTicks=5;
+  for(let i=0;i<=yTicks;i++){
+    const v=Math.round(maxY/yTicks*i);
+    const y=yOf(v);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+cw,y); ctx.stroke();
+    ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='right';
+    ctx.fillText(v,PAD.l-5,y+3.5);
+  }
+  // X axis labels (sample every ~50 data points or ~6 dates)
+  const xStep=Math.max(1,Math.floor(n/6));
+  ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  for(let i=0;i<n;i+=xStep){
+    const d=changeDates[i];
+    const label=d.slice(2,7).replace('-','/'); // YY/MM
+    ctx.fillText(label,xOf(i),H-PAD.b+14);
+  }
+  ctx.fillText(changeDates[n-1].slice(2,7).replace('-','/'),xOf(n-1),H-PAD.b+14);
+
+  // Draw per-proto lines (thin, semi-transparent)
+  activeProtos.forEach(p=>{
+    const col=protoColor(p);
+    ctx.strokeStyle=col+'99'; ctx.lineWidth=1.5;
+    ctx.beginPath();
+    series[p].forEach((v,i)=>{i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v));});
+    ctx.stroke();
+  });
+
+  // Draw total line (thick, dark)
+  ctx.strokeStyle='#374151'; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  series.total.forEach((v,i)=>{i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v));});
+  ctx.stroke();
+
+  // Legend
+  const legendItems=[{label:'Total',color:'#374151',w:2.5},...activeProtos.map(p=>({label:p,color:protoColor(p),w:1.5}))];
+  let lx=PAD.l;
+  legendItems.forEach(({label,color,w})=>{
+    ctx.strokeStyle=color; ctx.lineWidth=w;
+    ctx.beginPath(); ctx.moveTo(lx,PAD.t-4); ctx.lineTo(lx+16,PAD.t-4); ctx.stroke();
+    ctx.fillStyle='#555'; ctx.font='10px sans-serif'; ctx.textAlign='left';
+    ctx.fillText(label,lx+19,PAD.t-1);
+    lx+=19+ctx.measureText(label).width+12;
+  });
+
+  // ── Hover tooltip ──
+  const tt=document.getElementById('pop-tt');
+  const rect=canvas.getBoundingClientRect();
+
+  function showTooltip(e){
+    const mx=e.clientX-rect.left;
+    const i=Math.round((mx-PAD.l)/cw*(n-1));
+    if(i<0||i>=n)return tt.style.display='none';
+    const dt=changeDates[i];
+    const tot=series.total[i];
+    let html=`<div style="font-weight:700;margin-bottom:4px;font-size:12px">${dt}</div>`;
+    html+=`<div style="display:flex;justify-content:space-between;gap:16px;padding:2px 0;border-bottom:1px solid #f0ede8">
+      <span style="font-weight:600;color:#374151">Total</span><span style="font-weight:700">${tot}</span></div>`;
+    activeProtos.filter(p=>series[p][i]>0).forEach(p=>{
+      html+=`<div style="display:flex;justify-content:space-between;gap:16px;padding:2px 0">
+        <span style="color:${protoColor(p)};font-weight:600">${p}</span><span>${series[p][i]}</span></div>`;
+    });
+    tt.innerHTML=html;
+    // Position: avoid right edge
+    const ttW=176;
+    const ttH=tt.offsetHeight||90;
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const cx=e.clientX, cy=e.clientY;
+    // Prefer right of cursor, flip left if near edge; prefer above cursor
+    const left=cx+ttW+14>vw ? cx-ttW-10 : cx+14;
+    const top=cy-ttH-10<0 ? cy+14 : cy-ttH-10;
+    tt.style.left=left+'px';
+    tt.style.top=top+'px';
+    tt.style.display='block';
+    // Crosshair line
+    ctx.clearRect(0,0,W,H);
+    // Redraw everything
+    drawChart(ctx,W,H,PAD,cw,ch,n,maxY,changeDates,series,activeProtos,legendItems,yTicks);
+    // Vertical line
+    ctx.strokeStyle='#d1d5db'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(xOf(i),PAD.t); ctx.lineTo(xOf(i),PAD.t+ch); ctx.stroke();
+    ctx.setLineDash([]);
+    // Dot on total
+    ctx.fillStyle='#374151';
+    ctx.beginPath(); ctx.arc(xOf(i),yOf(series.total[i]),4,0,Math.PI*2); ctx.fill();
+  }
+
+  function drawChart(ctx,W,H,PAD,cw,ch,n,maxY,changeDates,series,activeProtos,legendItems,yTicks){
+    ctx.clearRect(0,0,W,H);
+    // Monthly 1st-day vertical gridlines
+    const dateFirst=new Date(changeDates[0]+'T00:00:00');
+    const dateLast=new Date(changeDates[n-1]+'T00:00:00');
+    const spanMs=dateLast-dateFirst;
+    ctx.strokeStyle='#e8e5df'; ctx.lineWidth=1; ctx.setLineDash([]);
+    let mc=new Date(dateFirst.getFullYear(),dateFirst.getMonth(),1);
+    while(mc<=dateLast){
+      const frac=(mc-dateFirst)/spanMs;
+      if(frac>=0&&frac<=1){
+        const mx=PAD.l+frac*cw;
+        ctx.beginPath(); ctx.moveTo(mx,PAD.t); ctx.lineTo(mx,PAD.t+ch); ctx.stroke();
+      }
+      mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);
+    }
+    ctx.strokeStyle='#f0ede8'; ctx.lineWidth=1;
+    for(let i=0;i<=yTicks;i++){
+      const v=Math.round(maxY/yTicks*i); const y=yOf(v);
+      ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+cw,y); ctx.stroke();
+      ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='right';
+      ctx.fillText(v,PAD.l-5,y+3.5);
+    }
+    const xStep=Math.max(1,Math.floor(n/6));
+    ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+    for(let i=0;i<n;i+=xStep)ctx.fillText(changeDates[i].slice(2,7).replace('-','/'),xOf(i),H-PAD.b+14);
+    ctx.fillText(changeDates[n-1].slice(2,7).replace('-','/'),xOf(n-1),H-PAD.b+14);
+    activeProtos.forEach(p=>{
+      ctx.strokeStyle=protoColor(p)+'99'; ctx.lineWidth=1.5;
+      ctx.beginPath(); series[p].forEach((v,i)=>{i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v));}); ctx.stroke();
+    });
+    ctx.strokeStyle='#374151'; ctx.lineWidth=2.5;
+    ctx.beginPath(); series.total.forEach((v,i)=>{i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v));}); ctx.stroke();
+    let lx=PAD.l;
+    legendItems.forEach(({label,color,w})=>{
+      ctx.strokeStyle=color; ctx.lineWidth=w;
+      ctx.beginPath(); ctx.moveTo(lx,PAD.t-4); ctx.lineTo(lx+16,PAD.t-4); ctx.stroke();
+      ctx.fillStyle='#555'; ctx.font='10px sans-serif'; ctx.textAlign='left';
+      ctx.fillText(label,lx+19,PAD.t-1);
+      lx+=19+ctx.measureText(label).width+12;
+    });
+  }
+
+  canvas.addEventListener('mousemove',showTooltip);
+  canvas.addEventListener('mouseleave',()=>{
+    tt.style.display='none';
+    drawChart(ctx,W,H,PAD,cw,ch,n,maxY,changeDates,series,activeProtos,legendItems,yTicks);
+  });
+
+  // Store draw fn for resize
+  canvas._drawChart=()=>drawChart(ctx,W,H,PAD,cw,ch,n,maxY,changeDates,series,activeProtos,legendItems,yTicks);
+  drawChart(ctx,W,H,PAD,cw,ch,n,maxY,changeDates,series,activeProtos,legendItems,yTicks);
+}
+function renderDashboard(){
+  const total=DB.length,alive=DB.filter(isActive).length,sac=DB.filter(isExpired).length;
+  const exp=DB.filter(a=>isActive(a)&&a.exp_start).length;
+  const cageSet=new Set();
+  DB.filter(isActive).filter(a=>a.cage_row&&a.cage_col).forEach(a=>{
+    const rackId=a.rack_id||(getRackForCage(a.cage_row,a.cage_col)||{}).rack_id||'';
+    cageSet.add(rackId+'_'+a.cage_row+'_'+a.cage_col);
+  });
+  const cages=cageSet.size;
+  ['d-total','d-alive','d-sac','d-exp','d-evts','d-cages'].forEach((id,i)=>{document.getElementById(id).textContent=[total,alive,sac,exp,EVLOG.length,cages][i];});
+  const pm={};DB.filter(isActive).forEach(a=>{pm[a.proto]=(pm[a.proto]||0)+1;});
+  document.getElementById('proto-grid').innerHTML=Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([p,n])=>
+    `<div class="pc"><div class="pc-n" style="color:${protoColor(p)}">${p}</div><div class="pc-v">${n}</div></div>`).join('');
+  const sm={};DB.filter(isActive).forEach(a=>{if(!sm[a.proto])sm[a.proto]={m:0,f:0,u:0};if(a.sex==='M')sm[a.proto].m++;else if(a.sex==='F')sm[a.proto].f++;else sm[a.proto].u++;});
+  document.getElementById('sex-tbl').innerHTML=Object.entries(sm).map(([p,v])=>
+    `<tr><td><span class="badge bproto">${p}</span></td><td>${v.m}</td><td>${v.f}</td><td>${v.u}</td><td>${v.m+v.f+v.u}</td></tr>`).join('');
+  const gm={};DB.filter(isActive).forEach(a=>{(a.loci||[]).forEach(l=>{const k=l.locus+'|'+l.status;if(!gm[k])gm[k]={locus:l.locus,status:l.status,n:0,m:0,f:0};gm[k].n++;if(a.sex==='M')gm[k].m++;if(a.sex==='F')gm[k].f++;});});
+  document.getElementById('geno-tbl').innerHTML=Object.values(gm).sort((a,b)=>a.locus!==b.locus?a.locus<b.locus?-1:1:({WT:0,HT:1,HM:2}[a.status]||0)-({WT:0,HT:1,HM:2}[b.status]||0)).map(v=>
+    `<tr><td>${v.locus}</td><td><span class="gl gl-${v.status}">${v.status}</span> <span style="font-size:11px;color:#aaa">${GENO_STATUS[v.status]||''}</span></td><td>${v.n}</td><td>${v.m}</td><td>${v.f}</td></tr>`).join('');
+  buildPopChart();
+  const recent=EVLOG.slice(-20).reverse();
+  document.getElementById('recent-evts').innerHTML=recent.map(e=>{
+    const d0=typeof e.fields[0]==='string'?e.fields[0]:(e.fields[0]?JSON.stringify(e.fields[0]):'');
+    return`<tr><td style="font-size:11px;white-space:nowrap">${fmtDT(e.et)}</td><td style="font-size:10px;color:#aaa;white-space:nowrap">${e.et!==e.ra?fmtDT(e.ra):''}</td><td style="font-size:11px;color:#888">${e.rb||''}</td><td>${evBadge(e.type)}</td><td class="sn-cell">${e.sn}</td><td class="note-cell">${d0}</td></tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ANIMALS
+// ═══════════════════════════════════════════════════════════════
+let aF={proto:'all',sex:'all',status:'all',origin:'all'};
+function getViewState(){return SETTINGS.view||(SETTINGS.view={sort:'old_first',mode:'flat'});}
+function setAnSort(v,el){
+  getViewState().sort=v;
+  document.querySelectorAll('#an-view-controls .fb').forEach(b=>{if(b.id.startsWith('sort'))b.classList.remove('active');});
+  el.classList.add('active');
+  const sEl=document.getElementById('set-sort');if(sEl)sEl.value=v;
+  renderAnimals();
+}
+function setAnView(v,el){
+  getViewState().mode=v;
+  document.querySelectorAll('#an-view-controls .fb').forEach(b=>{if(b.id.startsWith('view'))b.classList.remove('active');});
+  el.classList.add('active');
+  const mEl=document.getElementById('set-viewmode');if(mEl)mEl.value=v;
+  renderAnimals();
+}
+function applyViewState(){
+  const vs=getViewState();
+  const so=document.getElementById('sort-old'),sn=document.getElementById('sort-new');
+  const vf=document.getElementById('view-flat'),vl=document.getElementById('view-litter');
+  if(so&&sn){so.classList.toggle('active',vs.sort!=='new_first');sn.classList.toggle('active',vs.sort==='new_first');}
+  if(vf&&vl){vf.classList.toggle('active',vs.mode!=='litter');vl.classList.toggle('active',vs.mode==='litter');}
+}
+function setF(k,v,el){aF[k]=v;const row=el.closest('.fr');[...row.querySelectorAll('.fb')].filter(b=>b.getAttribute('onclick')?.includes("'"+k+"'")).forEach(b=>b.classList.remove('active'));el.classList.add('active');renderAnimals();}
+function getAnFiltered(){
+  const q=(document.getElementById('an-search')?.value||'').toLowerCase();
+  return DB.filter(a=>{
+    if(aF.proto!=='all'&&a.proto!==aF.proto)return false;
+    if(aF.sex==='M'&&a.sex!=='M')return false;
+    if(aF.sex==='F'&&a.sex!=='F')return false;
+    if(aF.status==='active'&&!isActive(a))return false;
+    if(aF.status==='expired'&&!isExpired(a))return false;
+    if(aF.status==='experiment'&&!(isActive(a)&&a.exp_start))return false;
+    if(aF.origin!=='all'&&a.origin!==aF.origin)return false;
+    if(q){const lstr=(a.loci||[]).map(l=>l.locus+' '+l.status).join(' ').toLowerCase();const h=[a.sn,a.cage,a.geno_display,a.remark,a.proto,lstr].join(' ').toLowerCase();if(!h.includes(q))return false;}
+    return true;
+  });
+}
+function sortAnimals(arr, forceMode){
+  const vs=getViewState();
+  const mode=forceMode||vs.mode;
+  return [...arr].sort((a,b)=>{
+    if(mode==='litter'){
+      // Litter view: always sort by DOB (age in days)
+      const da=ageDays(a.dob),db=ageDays(b.dob);
+      return vs.sort==='new_first'?da-db:db-da;
+    } else {
+      // Flat view: sort by SN (oldest first = lowest SN first)
+      return vs.sort==='new_first'?b.sn-a.sn:a.sn-b.sn;
+    }
+  });
+}
+function anRow(a){
+  return `<tr style="${isExpired(a)?'opacity:.55':''}">
+    <td class="sn-cell" style="cursor:pointer;color:#1e40af;text-decoration:underline" onclick="showAnimalDetail(${a.sn})">${a.sn}</td><td>${originBadge(a.origin)}</td>
+    <td><span class="badge bproto">${a.proto}</span></td>
+    <td><span class="badge ${a.sex==='M'?'bM':a.sex==='F'?'bF':'bWT'}">${a.sex||'?'}</span></td>
+    <td style="font-size:11px;white-space:nowrap">${a.dob}</td>
+    <td style="font-size:11px;white-space:nowrap">${ageWeeks(a.dob)}</td>
+    <td style="font-size:11px;white-space:nowrap">${fmtCageWithRack(a.cage_row,a.cage_col,a.rack_id)}</td>
+    <td>${lociHTML(a.loci)}</td>
+    <td>${statusBadge(a)}</td>
+    <td style="font-size:11px;color:#dc2626">${a.expired_date||''}</td>
+    <td class="note-cell">${a.remark||''}</td>
+  </tr>`;
+}
+function renderAnimals(){
+  applyViewState();
+  const vs=getViewState();
+  const fl=getAnFiltered();
+  const sorted=sortAnimals(fl);
+  const cntEl=document.getElementById('an-count-inline');
+  if(cntEl)cntEl.textContent='('+fl.length+' animals)';
+  const tbody=document.getElementById('an-tbody');
+  const thead=document.getElementById('an-thead');
+  if(!tbody||!thead)return;
+
+  if(vs.mode==='litter'){
+    thead.innerHTML='<tr><th></th><th></th><th>SN</th><th>Origin</th><th>Protocol</th><th>Sex</th><th>DOB</th><th>Age</th><th>Cage</th><th>Genotype loci</th><th>Status</th><th>Remark</th></tr>';
+    const groups={};
+    sorted.forEach(a=>{
+      // born: group by mating_id (litter label e.g. "M02")
+      // purchased/transfer: group by source (e.g. "SAF", "Jax") + cage + dob
+      const groupId=a.origin==='born'?(a.mating_id||'?'):(a.source||'purchased');
+      const key=groupId+'|'+(a.cage_row||'')+'|'+(a.cage_col||'')+'|'+(a.dob||'?');
+      if(!groups[key])groups[key]={key,groupId,cage_row:a.cage_row,cage_col:a.cage_col,dob:a.dob,origin:a.origin,animals:[]};
+      groups[key].animals.push(a);
+    });
+    const sortedGroups=Object.values(groups).sort((a,b)=>{
+      const da=ageDays(a.dob),db=ageDays(b.dob);
+      if(da!==db)return vs.sort==='new_first'?da-db:db-da;
+      // Same DOB: sort by min SN in group
+      const ma=Math.min(...a.animals.map(x=>x.sn));
+      const mb=Math.min(...b.animals.map(x=>x.sn));
+      return vs.sort==='new_first'?mb-ma:ma-mb;
+    });
+    // Within each group, sort members by SN
+    sortedGroups.forEach(g=>{g.animals.sort((a,b)=>a.sn-b.sn);});
+    let html='';
+    sortedGroups.forEach((g,gi)=>{
+      const cage=fmtCage(g.cage_row,g.cage_col);
+      const rack=g.animals[0]?.rack_id?getRackById(g.animals[0].rack_id):getRackForCage(g.cage_row,g.cage_col);
+      const rackNum=rack?rack.rack_id.replace('RACK-',''):'';
+      let faceLabel='';
+      if(rack){for(const face of rack.faces||[]){const rs=genAxisValues(face.row_start,face.row_end),cs=genAxisValues(face.col_start,face.col_end);if(rs.includes(String(g.cage_row))&&cs.includes(String(g.cage_col))){faceLabel=face.label;break;}}}
+      const cageWithRack=cage?(cage+(rackNum?` <span style="font-size:10px;color:#888">${rackNum}${faceLabel?' '+faceLabel:''}</span>`:'')):'?';
+      const protos=[...new Set(g.animals.map(a=>a.proto))].join('+');
+      const mF=g.animals.filter(a=>a.sex==='M').length,fF=g.animals.filter(a=>a.sex==='F').length;
+      const bg='#fff';
+      html+=`<tr style="background:#f1f0ec;border-top:2px solid #d0cdc7">
+        <td colspan="12" style="padding:7px 12px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="badge bproto">${protos}</span>
+            <span style="font-weight:700;font-size:13px">${g.groupId}</span>
+            <span style="color:#aaa;font-size:11px">·</span>
+            <span style="font-size:12px;font-weight:600">${cage}</span>
+            ${rackNum?`<span style="font-size:10px;color:#444;background:#e8e6e0;border-radius:4px;padding:1px 5px">${rackNum}${faceLabel?' · '+faceLabel:''}</span>`:''}
+            <span style="color:#aaa;font-size:11px">·</span>
+            ${g.dob?`<span style="font-size:11px;color:#555">DOB <b>${g.dob}</b></span><span style="font-size:11px;color:#888">${ageWeeks(g.dob)}</span>`:`<span style="font-size:11px;color:#bbb">DOB unknown</span>`}
+            <span style="color:#aaa;font-size:11px">·</span>
+            <span style="font-size:11px;color:#555">${g.animals.length} mice</span>
+            <span style="display:flex;gap:4px">
+              ${mF>0?`<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px">${mF}M</span>`:''}
+              ${fF>0?`<span style="font-size:10px;font-weight:700;background:#fce7e7;color:#991b1b;border-radius:4px;padding:1px 6px">${fF}F</span>`:''}
+            </span>
+          </div>
+        </td>
+      </tr>`;
+      g.animals.forEach(a=>{
+        html+=`<tr style="background:${bg};${isExpired(a)?'opacity:.55':''}">
+          <td></td><td></td>
+          <td class="sn-cell" style="cursor:pointer;color:#1e40af;text-decoration:underline" onclick="showAnimalDetail(${a.sn})">${a.sn}</td><td>${originBadge(a.origin)}</td>
+          <td><span class="badge bproto">${a.proto}</span></td>
+          <td><span class="badge ${a.sex==='M'?'bM':a.sex==='F'?'bF':'bWT'}">${a.sex||'?'}</span></td>
+          <td style="font-size:11px;white-space:nowrap">${a.dob}</td>
+          <td style="font-size:11px;white-space:nowrap">${ageWeeks(a.dob)}</td>
+          <td style="font-size:11px;white-space:nowrap">${fmtCageWithRack(a.cage_row,a.cage_col,a.rack_id)}</td>
+          <td>${lociHTML(a.loci)}</td>
+          <td>${statusBadge(a)}</td>
+          <td class="note-cell">${a.remark||''}</td>
+        </tr>`;
+      });
+    });
+    tbody.innerHTML=html||'<tr><td colspan="12" class="empty">No animals</td></tr>';
+  } else {
+    thead.innerHTML='<tr><th>SN</th><th>Origin</th><th>Protocol</th><th>Sex</th><th>DOB</th><th>Age</th><th>Cage</th><th>Genotype loci</th><th>Status</th><th>Expired</th><th>Remark</th></tr>';
+    tbody.innerHTML=sorted.map(anRow).join('')||'<tr><td colspan="11" class="empty">No animals</td></tr>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CAGES
+// ═══════════════════════════════════════════════════════════════
+let cfM='all';
+function setCF(v,el){cfM=v;document.querySelectorAll('#sec-cages .fb').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderCages();}
+function renderCages(){
+  const q=(document.getElementById('cage-search')?.value||'').toLowerCase();
+  const map={};
+  DB.forEach(a=>{
+    if(!a.cage_row&&!a.cage_col)return;
+    const key=a.cage_row+'_'+a.cage_col;
+    if(!map[key])map[key]={row:a.cage_row,col:a.cage_col,protos:new Set(),am:0,af:0,em:0,ef:0,lociMap:{}};
+    map[key].protos.add(a.proto);
+    if(isActive(a)){if(a.sex==='M')map[key].am++;else if(a.sex==='F')map[key].af++;}
+    else{if(a.sex==='M')map[key].em++;else if(a.sex==='F')map[key].ef++;}
+    (a.loci||[]).forEach(l=>{const k=l.locus+'|'+l.status;map[key].lociMap[k]=(map[key].lociMap[k]||0)+1;});
+  });
+  let entries=Object.values(map).sort((a,b)=>{const ar=parseInt(a.row)||a.row,br2=parseInt(b.row)||b.row;if(ar<br2)return-1;if(ar>br2)return 1;return a.col<b.col?-1:a.col>b.col?1:0;});
+  if(cfM==='active')entries=entries.filter(c=>c.am+c.af>0);
+  if(q)entries=entries.filter(c=>fmtCage(c.row,c.col).toLowerCase().includes(q));
+  document.getElementById('cage-count').textContent='('+entries.length+' cages)';
+  const html=entries.map(c=>{
+    const rack=getRackForCage(c.row,c.col);
+    const ls=Object.entries(c.lociMap).map(([k,n])=>{const[lo,st]=k.split('|');return`<span class="gl gl-${st}" style="font-size:9px">${lo} ${st}×${n}</span>`;}).join(' ');
+    return`<tr>
+      <td style="font-family:monospace;font-weight:700">${fmtCage(c.row,c.col)}</td>
+      <td style="font-size:11px;color:#888">${rack?rack.rack_id:'-'}</td>
+      <td>${[...c.protos].map(p=>'<span class="badge bproto">'+p+'</span>').join(' ')}</td>
+      <td><span class="badge bM">${c.am}M</span></td>
+      <td><span class="badge bF">${c.af}F</span></td>
+      <td>${c.am+c.af}</td>
+      <td style="font-size:11px;color:#aaa">${c.em+c.ef>0?'(+'+( c.em+c.ef)+')':''}</td>
+      <td><div class="geno-loci">${ls||'—'}</div></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('cage-tbody').innerHTML=html||'<tr><td colspan="8" class="empty">No cages</td></tr>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BREEDING
+// ═══════════════════════════════════════════════════════════════
+function renderBreeding(){
+  const stateMap={};DB.forEach(a=>{stateMap[a.sn]=a;});
+  const allEvs=[...RAW,...fullToCompact(newEvents)];
+  const PROTO_ORDER=['SH3','AC','ORC','ETAG','ACHM','WTE2','ACLGFT'];
+
+  // Build cageMap keyed by rack|row|col|pair — avoids collision when same cage
+  // is reused for a new pair after the previous one expires
+  const cageMap={};
+  const seenSnCagePair=new Set();
+
+  allEvs.filter(ev=>ev[0]===8&&ev[5]==='mating'&&(!CUTOFF||ev[1]<=CUTOFF))
+    .sort((a,b)=>a[1].localeCompare(b[1]))
+    .forEach(ev=>{
+      const sn=ev[4];
+      const pair=ev[6]||'';
+      const mProto=ev[7]||'';
+      const cageStatus=ev[8]||'Unknown';
+      const cage_row=ev[10]||'',cage_col=ev[11]||'';
+      if(!cage_row||!cage_col)return;
+      const ri=ev[12]||(getRackForCage(cage_row,cage_col)||{}).rack_id||'';
+      // Key includes pair so same cage can appear multiple times with different pairs
+      const snKey=sn+'|'+ri+'|'+cage_row+'|'+cage_col+'|'+pair;
+      if(seenSnCagePair.has(snKey))return; seenSnCagePair.add(snKey);
+      const a=stateMap[sn];if(!a)return;
+      const ckey=ri+'|'+cage_row+'|'+cage_col+'|'+pair;
+      if(!cageMap[ckey]){
+        cageMap[ckey]={rack_id:ri,cage_row,cage_col,proto:mProto||a.proto||'',pair,cage_status:cageStatus,dams:[],sires:[]};
+      }
+      if(a.sex==='F'){if(!cageMap[ckey].dams.find(x=>x.sn===sn))cageMap[ckey].dams.push(a);}
+      else if(a.sex==='M'){if(!cageMap[ckey].sires.find(x=>x.sn===sn))cageMap[ckey].sires.push(a);}
+    });
+
+  // Pups: link to dam's mating cage (cage+pair identified by dam's mating event)
+  const pupsByCagePair={};
+  DB.filter(a=>a.origin==='born'&&(a.dam||a.sire)).forEach(a=>{
+    const parentSN=a.dam||a.sire;
+    const mEv=allEvs.filter(ev=>ev[0]===8&&ev[5]==='mating'&&ev[4]===parentSN&&(!CUTOFF||ev[1]<=CUTOFF))
+      .sort((x,y)=>y[1].localeCompare(x[1]))[0];
+    if(!mEv)return;
+    const cr=mEv[10]||'',cc=mEv[11]||'',ri=mEv[12]||(getRackForCage(mEv[10],mEv[11])||{}).rack_id||'';
+    const pair=mEv[6]||'';
+    const ck=ri+'|'+cr+'|'+cc+'|'+pair;
+    if(!pupsByCagePair[ck])pupsByCagePair[ck]=[];
+    if(!pupsByCagePair[ck].find(p=>p.sn===a.sn))pupsByCagePair[ck].push(a);
+  });
+
+  const sorted=Object.values(cageMap).sort((a,b)=>{
+    const ai=PROTO_ORDER.indexOf(a.proto),bi=PROTO_ORDER.indexOf(b.proto);
+    if((ai<0?99:ai)!==(bi<0?99:bi))return(ai<0?99:ai)-(bi<0?99:bi);
+    if(a.pair&&b.pair)return a.pair.localeCompare(b.pair,undefined,{numeric:true});
+    const rc=a.cage_row.localeCompare(b.cage_row,undefined,{numeric:true});
+    return rc||a.cage_col.localeCompare(b.cage_col);
+  });
+
+  function animalCell(a){
+    if(!a)return '<td class="bt-animal-cell"><span class="bc-empty">—</span></td>';
+    const active=!isExpired(a);
+    const dot='<span class="bc-dot '+(active?'bc-dot-active':'bc-dot-exp')+'"></span>';
+    const geno=a.geno_display||(a.loci&&a.loci.length?a.loci.map(l=>l.locus+'_'+l.status).join('; '):'');
+    const dobStr=a.dob?fmtDobAge(a.dob):'—';
+    const expTag=!active?'<span class="bc-exp-tag">Expired</span>':'';
+    return '<td class="bt-animal-cell">'
+      +'<div class="bc-arow">'+dot+'<span class="bc-sn">#'+a.sn+'</span>'+(geno?'<span class="bc-geno">'+geno+'</span>':'')+expTag+'</div>'
+      +'<div class="bc-adob">'+dobStr+'</div>'
+      +'</td>';
+  }
+
+  if(!sorted.length){
+    document.getElementById('breed-list').innerHTML='<div style="color:#bbb;padding:16px;font-size:13px">No mating cages found</div>';
+    return;
+  }
+
+  const showExpired=document.getElementById('breed-show-expired')?.checked||false;
+  const visible=showExpired?sorted:sorted.filter(c=>(c.cage_status||'').toLowerCase()==='active');
+
+  const byProto={};
+  const protoOrder=[];
+  visible.forEach(c=>{
+    if(!byProto[c.proto]){byProto[c.proto]=[];protoOrder.push(c.proto);}
+    byProto[c.proto].push(c);
+  });
+
+  if(!visible.length){
+    document.getElementById('breed-list').innerHTML='<div style="color:#bbb;padding:16px;font-size:13px">No active mating cages.</div>';
+    return;
+  }
+
+  const thead='<thead><tr>'
+    +'<th class="bt-h-pair">Pair</th>'
+    +'<th class="bt-h-rack">Rack</th>'
+    +'<th class="bt-h-cage">Cage</th>'
+    +'<th class="bt-h-status">Status</th>'
+    +'<th class="bt-h-animal">Sire</th>'
+    +'<th class="bt-h-animal">Dam</th>'
+    +'<th class="bt-h-pups">Pups</th>'
+    +'</tr></thead>';
+
+  let html='';
+  protoOrder.forEach(proto=>{
+    const cages=byProto[proto];
+    const colr=protoColor(proto);
+    html+='<div class="breed-proto-section">'
+      +'<div class="breed-proto-hdr" style="border-left:4px solid '+colr+'">'
+      +'<span class="bc-proto-badge" style="background:'+colr+'22;color:'+colr+';border:1px solid '+colr+'66">'+proto+'</span>'
+      +'</div>'
+      +'<div class="ts-fixed" style="max-height:calc(100vh - 320px)"><table class="breed-tbl" style="min-width:700px">'+thead+'<tbody>';
+
+    cages.forEach(c=>{
+      const ckey=c.rack_id+'|'+c.cage_row+'|'+c.cage_col+'|'+c.pair;
+      const pups=pupsByCagePair[ckey]||[];
+      const activePups=pups.filter(isActive);
+      const isCageActive=(c.cage_status||'').toLowerCase()==='active';
+      const cageStatusHtml=isCageActive
+        ?'<span class="bc-status-active">Active</span>'
+        :'<span class="bc-status-exp">Expired</span>';
+      const cageLabel=fmtCage(c.cage_row,c.cage_col);
+      const rackNum=c.rack_id.replace('RACK-','');
+
+      let pupsCell='<td class="bt-td-pups"><span class="bc-empty">—</span></td>';
+      if(pups.length>0){
+        const ap=activePups.length;
+        const sns=pups.slice(0,5).map(p=>'#'+p.sn).join(', ')+(pups.length>5?' +'+(pups.length-5):'');
+        pupsCell='<td class="bt-td-pups"><div class="bc-pup-wrap">'
+          +(ap>0?'<span class="bc-pup-n">'+ap+'</span><span class="bc-pup-label"> active</span>':'<span class="bc-pup-done">done</span>')
+          +'<div class="bc-pup-sns">'+sns+'</div></div></td>';
+      }
+
+      const damA=c.dams[0]||null;
+      const sireA=c.sires[0]||null;
+      const extraDams=c.dams.slice(1);
+      const extraSires=c.sires.slice(1);
+
+      html+='<tr class="'+(isCageActive?'':'bc-row-dim')+'">'
+        +'<td class="bt-td-pair"><span class="bc-pair-lbl">'+(c.pair||'—')+'</span></td>'
+        +'<td class="bt-td-rack"><span class="bc-rack-lbl">'+rackNum+'</span></td>'
+        +'<td class="bt-td-cage"><span class="bc-cage-lbl">'+cageLabel+'</span></td>'
+        +'<td class="bt-td-status">'+cageStatusHtml+'</td>'
+        +animalCell(sireA)+animalCell(damA)+pupsCell+'</tr>';
+
+      const maxExtra=Math.max(extraDams.length,extraSires.length);
+      for(let i=0;i<maxExtra;i++){
+        html+='<tr class="bc-extra-row '+(isCageActive?'':'bc-row-dim')+'">'
+          +'<td></td><td></td><td></td><td></td>'
+          +animalCell(extraSires[i]||null)+animalCell(extraDams[i]||null)
+          +'<td></td></tr>';
+      }
+    });
+
+    html+='</tbody></table></div></div>';
+  });
+
+  document.getElementById('breed-list').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT LOG
+// ═══════════════════════════════════════════════════════════════
+const PAGE=100;
+let evF={type:'all'},evPage=0;
+function setEF(k,v,el){evF[k]=v;const row=el.closest('.fr');[...row.querySelectorAll('.fb')].filter(b=>b.getAttribute('onclick')?.includes("'"+k+"'")).forEach(b=>b.classList.remove('active'));el.classList.add('active');evPage=0;renderEvlog();}
+function renderEvlog(){
+  const q=(document.getElementById('ev-search')?.value||'').toLowerCase();
+  const fl=EVLOG.filter(e=>{
+    if(evF.type!=='all'&&ET[e.type]!==evF.type)return false;
+    if(q){const f0=typeof e.fields[0]==='string'?e.fields[0]:JSON.stringify(e.fields[0]);const h=[e.sn,ET[e.type],e.proto,f0].join(' ').toLowerCase();if(!h.includes(q))return false;}
+    return true;
+  }).slice().reverse();
+  const total=fl.length;
+  document.getElementById('ev-total').textContent='('+total+')';
+  const tp=Math.max(1,Math.ceil(total/PAGE));if(evPage>=tp)evPage=0;
+  const sl=fl.slice(evPage*PAGE,(evPage+1)*PAGE);
+  document.getElementById('ev-page-info').textContent='Page '+(evPage+1)+'/'+tp;
+  document.getElementById('ev-show-info').textContent=(evPage*PAGE+1)+'–'+Math.min((evPage+1)*PAGE,total)+' of '+total;
+  document.getElementById('ev-prev').disabled=evPage===0;document.getElementById('ev-next').disabled=evPage>=tp-1;
+  const getCage=e=>{const t=e.type,f=e.fields;const ci={0:3,1:4,2:2,3:0,4:1,5:1,6:2,7:0,8:2,9:3}[t];if(ci===undefined)return'';const row=f[ci+1]||'',col=f[ci+2]||'';return fmtCage(row,col)||f[ci]||'';};
+  // Per-type detail chips
+  const chip=(label,val,col)=>'<span style="font-size:10px;background:'+(col||'#f4f2ef')+';border-radius:4px;padding:1px 6px;margin-right:3px;white-space:nowrap;color:#222">'+label+': <b>'+val+'</b></span>';
+  const getDetail=e=>{
+    const f=e.fields,t=e.type;
+    if(t===0){const p=[];if(f[1])p.push(chip('from',f[1]));if(f[2]&&f[2]!=='?')p.push(chip('sex',f[2],f[2]==='M'?'#dbeafe':f[2]==='F'?'#fce7e7':'#f3f4f6'));return p.join('');}
+    if(t===1){const p=[];if(f[1])p.push(chip('sire','#'+f[1],'#f0fdf4'));if(f[2])p.push(chip('dam','#'+f[2],'#fdf2f8'));if(f[3])p.push(chip('litter',f[3]));return p.join('');}
+    if(t===2){// dob_verified: fields=[source, dob, ...]
+      const src=f[0]||'?';const srcCol=src==='self'?'#d1fae5':src==='facility'?'#dbeafe':'#fef9c3';
+      return chip('verified by',src,srcCol);}
+    if(t===3){return chip('weaned','✓','#f0fdf4');}
+    if(t===4){const s=f[0]||'?';return chip('sex',s,s==='M'?'#dbeafe':s==='F'?'#fce7e7':'#f3f4f6');}
+    if(t===5){return chip('tag','#'+f[0],'#fefce8');}
+    if(t===6){const lf=f[0]||[];const p=[];for(let i=0;i<lf.length;i+=2)if(lf[i])p.push(chip(lf[i],lf[i+1]||'WT','#eff6ff'));return p.join('')||(f[1]||'');}
+    if(t===7){const c=fmtCage(f[1]||'',f[2]||'')||f[0]||'';return chip('→ cage',c,'#f0fdf4');}
+    if(t===8){
+      if(f[0]==='mating'){const p=[chip('pair',f[1]||'?','#fdf4ff')];if(f[2])p.push(chip('proto',f[2],'#f5f3ff'));if(f[3])p.push(chip('status',f[3],f[3]==='Active'?'#dcfce7':'#fee2e2'));return p.join('');}
+      const p=[chip('exp',f[0]||'?','#fef9c3')];if(f[1])p.push('<span style="font-size:10px;color:#444">'+f[1].slice(0,50)+'</span>');return p.join(' ');
+    }
+    if(t===9){
+      const from=f[0]||'active',to=f[1]||'expired';
+      const toCol=to==='death'?'#fee2e2':to==='sacrificed'?'#fef3c7':to==='collected'?'#ecfdf5':to==='experiment'?'#eff6ff':to==='mating'?'#fdf4ff':'#f3f4f6';
+      const p=[chip(from+' →',to,toCol)];
+      if(f[2])p.push('<span style="font-size:10px;color:#444">'+f[2].slice(0,60)+(f[2].length>60?'…':'')+'</span>');
+      return p.join(' ');
+    }
+    return '';
+  };
+  const html=sl.map(e=>`<tr>
+    <td style="font-size:11px;white-space:nowrap">${fmtDT(e.et)}</td>
+    <td style="font-size:10px;color:#aaa;white-space:nowrap">${e.et!==e.ra?fmtDT(e.ra):''}</td>
+    <td style="font-size:11px;color:#888">${e.rb||''}</td>
+    <td>${evBadge(e.type)}</td>
+    <td class="sn-cell">${e.sn}</td>
+    <td><span class="badge bproto">${e.proto}</span></td>
+    <td style="font-family:monospace;font-size:11px">${getCage(e)}</td>
+    <td class="note-cell">${getDetail(e)}</td>
+  </tr>`).join('');
+  document.getElementById('ev-tbody').innerHTML=html||'<tr><td colspan="8" class="empty">No events</td></tr>';
+}
+function changeEvPage(d){evPage+=d;renderEvlog();}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP
+// ═══════════════════════════════════════════════════════════════
+let cagePos={},cageMapData={},dragging=null,draggingRackId=null,activeRackId=null,activeFaceKey=null;
+function pCardClass(proto){return'ccard pcolor-'+proto.replace(/[^a-zA-Z0-9]/g,'_');}
+
+// Global maps for mating cage display
+let matingCageProtos={},matingCagePairs={};
+
+function initMapData(){
+  cageMapData={};
+  matingCageProtos={};
+  matingCagePairs={};
+  const matingCageKeys=new Set();
+  const allEvs=[...RAW,...fullToCompact(newEvents)];
+  // Scan mating experiment_start events directly for protocol, pair(remark)
+  // Only include Active mating cages (not Expired)
+  allEvs.filter(ev=>ev[0]===8&&ev[5]==='mating'&&(!CUTOFF||ev[1]<=CUTOFF)).forEach(ev=>{
+    const sn=ev[4];
+    // Format: ev[6]=pair, ev[7]=mating_proto, ev[8]=cage_status, ev[9]=cage_addr, ev[10]=row, ev[11]=col, ev[12]=rack
+    const pair=ev[6]||'';
+    const mProto=ev[7]||'';
+    const cageStatus=(ev[8]||'').toLowerCase();
+    // Skip expired mating cages
+    if(cageStatus==='expired')return;
+    const cage_row=ev[10]||'',cage_col=ev[11]||'';
+    if(!cage_row||!cage_col)return;
+    const ri=ev[12]||(getRackForCage(cage_row,cage_col)||{}).rack_id||'';
+    const k=ri+'_'+cage_row+'_'+cage_col;
+    matingCageKeys.add(k);
+    if(mProto&&!matingCageProtos[k])matingCageProtos[k]=mProto;
+    if(pair&&!matingCagePairs[k])matingCagePairs[k]=pair;
+  });
+  // Also scan from active animals with exp_start for any missed
+  DB.filter(isActive).forEach(a=>{
+    if(a.exp_start&&a.exp_start.trim()&&a.cage_row&&a.cage_col){
+      const rId=a.rack_id||(getRackForCage(a.cage_row,a.cage_col)||{}).rack_id||'';
+      const hasMating=allEvs.some(ev=>ev[0]===8&&ev[4]===a.sn&&ev[5]==='mating'&&(!CUTOFF||ev[1]<=CUTOFF));
+      if(hasMating){
+        const k=rId+'_'+a.cage_row+'_'+a.cage_col;
+        matingCageKeys.add(k);
+        if(!matingCageProtos[k]&&a.proto)matingCageProtos[k]=a.proto;
+      }
+    }
+  });
+  DB.filter(isActive).filter(a=>a.cage_row&&a.cage_col).forEach(a=>{
+    const rackId=a.rack_id||(getRackForCage(a.cage_row,a.cage_col)||{}).rack_id||'';
+    const k=rackId+'_'+a.cage_row+'_'+a.cage_col;
+    if(!cageMapData[k])cageMapData[k]={row:a.cage_row,col:a.cage_col,rack_id:rackId,protos:new Set(),m:0,f:0,sns:[],dobs:[],pups:0,isMating:matingCageKeys.has(k)};
+    if(a.unweaned){
+      cageMapData[k].pups++;
+      if(matingCageKeys.has(k))cageMapData[k].isMating=true;
+      if(a.dob)cageMapData[k].dobs.push(a.dob);
+    } else {
+      // For mating cages use the mating protocol, not individual animal's protocol
+      const protoToUse=(cageMapData[k].isMating&&matingCageProtos[k])?matingCageProtos[k]:a.proto;
+      cageMapData[k].protos.add(protoToUse);
+      if(a.sex==='M')cageMapData[k].m++;else if(a.sex==='F')cageMapData[k].f++;
+      cageMapData[k].sns.push(a.sn);if(a.dob)cageMapData[k].dobs.push(a.dob);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DUAL VIEW
+// ═══════════════════════════════════════════════════════════════
+let dualViewActive=false;
+let dualState={l:{rackId:null,faceKey:null},r:{rackId:null,faceKey:null}};
+
+function toggleDualView(){
+  dualViewActive=!dualViewActive;
+  document.getElementById('map-single-view').style.display=dualViewActive?'none':'';
+  document.getElementById('map-dual-view').style.display=dualViewActive?'':'none';
+  const btn=document.getElementById('dual-view-btn');
+  if(btn){btn.style.background=dualViewActive?'#1a1a1a':'#fff';btn.style.color=dualViewActive?'#fff':'#555';}
+  if(dualViewActive) initDualView();
+}
+
+function initDualView(){
+  // Populate facility selects for both panels
+  const facilities=[...new Set(RACKS.map(r=>r.facility||'—'))].sort();
+  ['l','r'].forEach(side=>{
+    const fEl=document.getElementById('dual-fac-'+side);
+    fEl.innerHTML=facilities.map(f=>`<option value="${f}">${f}</option>`).join('');
+    _dualUpdateRoom(side);
+    const racks=_dualFilteredRacks(side);
+    if(racks.length){
+      // Default: left = current active, right = second rack/face
+      if(side==='l'&&activeRackId){
+        fEl.value=getRackById(activeRackId)?.facility||facilities[0];
+        _dualUpdateRoom('l');
+        const rack=getRackById(activeRackId);
+        if(rack){document.getElementById('dual-room-l').value=rack.room||'—';}
+      }
+      const r=_dualFilteredRacks(side)[0];
+      if(r){
+        if(side==='r'&&dualState.r.rackId) {} // keep existing
+        const defaultFace=r.faces?.[0];
+        dualState[side]={rackId:r.rack_id,faceKey:r.rack_id+'__'+(defaultFace?.face_id||'')};
+      }
+    }
+  });
+  // If left had active face, use it
+  if(activeRackId){
+    const rack=getRackById(activeRackId);
+    if(rack){
+      document.getElementById('dual-fac-l').value=rack.facility||'—';
+      _dualUpdateRoom('l');
+      document.getElementById('dual-room-l').value=rack.room||'—';
+    }
+    dualState.l.rackId=activeRackId;
+    if(activeFaceKey)dualState.l.faceKey=activeFaceKey;
+    else{const f=rack?.faces?.[0];if(f)dualState.l.faceKey=activeRackId+'__'+f.face_id;}
+  }
+  // Right: pick a different face if possible
+  if(!dualState.r.rackId){
+    const allFaces=RACKS.flatMap(r=>r.faces.map(f=>({rackId:r.rack_id,faceKey:r.rack_id+'__'+f.face_id})));
+    const other=allFaces.find(x=>x.faceKey!==dualState.l.faceKey);
+    if(other){
+      dualState.r=other;
+      const rack=getRackById(other.rackId);
+      if(rack){document.getElementById('dual-fac-r').value=rack.facility||'—';_dualUpdateRoom('r');document.getElementById('dual-room-r').value=rack.room||'—';}
+    }
+  }
+  _dualRenderMinimap('l');_dualRenderMinimap('r');
+  _dualRenderFace('l');_dualRenderFace('r');
+}
+
+function _dualUpdateRoom(side){
+  const fac=document.getElementById('dual-fac-'+side).value;
+  const rooms=[...new Set(RACKS.filter(r=>(r.facility||'—')===fac).map(r=>r.room||'—'))].sort((a,b)=>isNaN(a)||isNaN(b)?a<b?-1:1:Number(a)-Number(b));
+  const rEl=document.getElementById('dual-room-'+side);
+  const prev=rEl.value;
+  rEl.innerHTML=rooms.map(r=>`<option value="${r}">${r}</option>`).join('');
+  if(rooms.includes(prev))rEl.value=prev;
+  else rEl.value=rooms[0]||'';
+}
+
+function _dualFilteredRacks(side){
+  const fac=document.getElementById('dual-fac-'+side).value;
+  const room=document.getElementById('dual-room-'+side).value;
+  return RACKS.filter(r=>(r.facility||'—')===fac&&(r.room||'—')===room);
+}
+
+function onDualFacChange(side){_dualUpdateRoom(side);const r=_dualFilteredRacks(side)[0];if(r)_dualSelectFace(side,r.rack_id,r.faces?.[0]?.face_id);}
+function onDualRoomChange(side){const r=_dualFilteredRacks(side)[0];if(r)_dualSelectFace(side,r.rack_id,r.faces?.[0]?.face_id);}
+
+function _dualSelectFace(side,rackId,faceId){
+  dualState[side]={rackId,faceKey:rackId+'__'+(faceId||'')};
+  _dualRenderMinimap(side);
+  _dualRenderFace(side);
+}
+
+function _dualRenderMinimap(side){
+  const fac=document.getElementById('dual-fac-'+side).value;
+  const room=document.getElementById('dual-room-'+side).value;
+  const racks=RACKS.filter(r=>(r.facility||'—')===fac&&(r.room||'—')===room);
+  const strip=document.getElementById('dual-minimap-'+side);
+  strip.innerHTML=racks.flatMap(rack=>(rack.faces||[]).map(face=>{
+    const fk=rack.rack_id+'__'+face.face_id;
+    const isActive=dualState[side].faceKey===fk;
+    const rows=genAxisValues(face.row_start,face.row_end);
+    const cols=genAxisValues(face.col_start,face.col_end);
+    const grid=rows.map(row=>'<div class="minimap-row">'+cols.map(col=>{const k=rack.rack_id+'_'+row+'_'+col;const d=cageMapData[k];let bg='#f0ede8';if(d){const p=[...d.protos][0]||'default';bg=protoColor(p);}return'<div class="minimap-cell" style="background:'+bg+'"></div>';}).join('')+'</div>').join('');
+    const rNum=rack.rack_id.replace('RACK-','');
+    return`<div class="minimap-rack${isActive?' active':''}" onclick="_dualSelectFace('${side}','${rack.rack_id}','${face.face_id}')" data-rack="${rack.rack_id}" data-face="${face.face_id}" style="cursor:pointer">
+      <div class="minimap-rack-label">${rNum}<span style="display:block;font-size:9px;color:#aaa">${face.label}</span></div>
+      <div class="minimap-faces"><div class="minimap-face">${grid}</div></div></div>`;
+  })).join('');
+}
+
+function _dualRenderFace(side){
+  const {rackId,faceKey}=dualState[side];
+  const wrap=document.getElementById('dual-rack-'+side);
+  const infoEl=document.getElementById('dual-info-'+side);
+  const rack=getRackById(rackId);
+  if(!rack){wrap.innerHTML='<div class="empty">Select a face.</div>';return;}
+  const faceId=faceKey?faceKey.split('__')[1]:'';
+  const face=(rack.faces||[]).find(f=>f.face_id===faceId)||(rack.faces||[])[0];
+  if(!face){wrap.innerHTML='<div class="empty">No face found.</div>';return;}
+  // Reuse renderFace logic inline
+  const rows=genAxisValues(face.row_start,face.row_end);
+  const cols=genAxisValues(face.col_start,face.col_end);
+  let h=`<div class="face-wrap"><div class="face-lbl" style="color:${side==='l'?'#3B8BD4':'#D85A30'}">${face.label}</div>
+    <div class="col-hdrs">${cols.map(c=>`<div class="col-hdr">${c}</div>`).join('')}</div>`;
+  rows.forEach(row=>{
+    h+=`<div class="grid-row"><div class="row-lbl">${row}</div>`;
+    cols.forEach(col=>{
+      const k=rackId+'_'+row+'_'+col;const data=cageMapData[k];const da=fmtCage(row,col);
+      if(data){
+        const proto=[...data.protos][0]||'default';const colr=protoColor(proto);
+        const protoLabel=[...data.protos].join('+');const isMating=data.isMating;
+        const mDobs=[...new Set(DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&!a.unweaned&&a.sex==='M'&&!isExpired(a)).map(a=>a.dob).filter(Boolean))];
+        const fDobs=[...new Set(DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&!a.unweaned&&a.sex==='F'&&!isExpired(a)).map(a=>a.dob).filter(Boolean))];
+        const pDobs=[...new Set(DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&a.unweaned&&!isExpired(a)).map(a=>a.dob).filter(Boolean))];
+        function compactAge(dob){if(!dob)return'';const d=ageDays(dob);if(d<0)return'';const w=Math.floor(d/7),r=d%7;return(w>0?w+'w ':'')+r+'d';}
+        function fmtDS(dob){if(!dob)return'';const p=dob.split('-');if(p.length<3)return'';return p[1]+'/'+p[2]+'/'+String(parseInt(p[0])).slice(-2);}
+        function ageBadge(dob,cls){const age=compactAge(dob);if(!age)return'';const dp=!isMating?' <span style="color:#888;font-weight:600">('+fmtDS(dob)+')</span>':'';return'<span class="'+cls+'" style="margin-right:2px">'+age+dp+'</span>';}
+        const mBadges=data.m>0?`<span class="cmfb cmf-m">${data.m}M</span>`+mDobs.map(d=>ageBadge(d,'crow-age')).join(''):'';
+        const fBadges=data.f>0?`<span class="cmfb cmf-f">${data.f}F</span>`+fDobs.map(d=>ageBadge(d,'crow-age')).join(''):'';
+        const mfRow=(data.m>0||data.f>0)?`<div class="crow">${mBadges}${data.m>0&&data.f>0?'<span class="crow-sep"></span>':''}${fBadges}</div>`:'';
+        const pRow=data.pups>0?`<div class="crow"><span class="cmfb cmf-pup-badge">🐭 ${data.pups}</span>${pDobs.map(d=>ageBadge(d,'crow-age')).join('')}</div>`:'';
+        const cardStyle=isMating?`border:none;padding-left:10px;background:repeating-linear-gradient(135deg,${colr} 0,${colr} 3px,${colr}33 3px,${colr}33 6px) 0 0/6px 100% no-repeat,#fff`:`border-left:4px solid ${colr}`;
+        h+=`<div class="cell" ondragover="onDO(event)" ondrop="onDrop(event,'${row}','${col}','${rackId}')" ondragleave="onDL(event)" data-row="${row}" data-col="${col}">
+          <div class="ccard" style="${cardStyle}" draggable="true" data-k="${k}" data-rack="${rackId}"
+            ondragstart="onDS(event,'${k}','${rackId}')" ondragend="onDE(event)"
+            onmouseenter="showMTT(event,'${k}')" onmouseleave="hideMTT()"
+            onclick="if(!event.defaultPrevented)showCageDetail('${k}')">
+            <div class="caddr">${da} <span class="cproto-inline">${isMating&&matingCagePairs[k]?protoLabel+' – '+matingCagePairs[k]:protoLabel}</span></div>
+            ${mfRow}${pRow}
+          </div></div>`;
+      } else {
+        h+=`<div class="cell" ondragover="onDO(event)" ondrop="onDrop(event,'${row}','${col}','${rackId}')" ondragleave="onDL(event)" data-row="${row}" data-col="${col}"></div>`;
+      }
+    });
+    h+='</div>';
+  });
+  wrap.innerHTML=h+'</div>';
+  const occ=Object.values(cageMapData).filter(d=>d.rack_id===rackId).length;
+  const tot=Object.values(cageMapData).filter(d=>d.rack_id===rackId).reduce((s,c)=>s+c.m+c.f,0);
+  infoEl.innerHTML=`<span>${rack.rack_id}</span><span>${face.label}</span><span>Active cages: <b>${occ}</b></span><span>Active animals: <b>${tot}</b></span>`;
+}
+
+function _dualRefresh(){
+  initMapData();
+  _dualRenderMinimap('l');_dualRenderMinimap('r');
+  _dualRenderFace('l');_dualRenderFace('r');
+}
+
+function renderMap(){
+  initMapData();
+  const protos=[...new Set(DB.filter(isActive).map(a=>a.proto))];
+  const legendEl=document.getElementById('map-legend');
+  // Preserve dual view button, update legend dots only
+  const dualBtn=legendEl.querySelector('#dual-view-btn');
+  legendEl.innerHTML=protos.map(p=>`<span style="display:flex;align-items:center;gap:4px"><span style="background:${protoColor(p)};width:10px;height:10px;border-radius:2px;display:inline-block"></span><span style="font-size:11px;color:#555">${p}</span></span>`).join('')+'<span style="font-size:11px;color:#aaa">Expired excluded · Drag to rearrange</span>';
+  if(dualBtn){legendEl.appendChild(dualBtn);}else{
+    const btn=document.createElement('button');btn.id='dual-view-btn';
+    btn.onclick=toggleDualView;btn.title='Show two faces side-by-side for cross-face drag';
+    btn.style.cssText='margin-left:auto;padding:3px 10px;font-size:11px;border:1px solid #ddd;border-radius:7px;background:#fff;cursor:pointer;color:#555;display:flex;align-items:center;gap:5px';
+    btn.innerHTML='<span style="font-size:12px">&#8644;</span> Dual View';
+    legendEl.appendChild(btn);
+  }
+  if(dualViewActive)legendEl.querySelector('#dual-view-btn').style.background='#1a1a1a',legendEl.querySelector('#dual-view-btn').style.color='#fff';
+  // Build facility dropdown
+  const facilities=[...new Set(RACKS.map(r=>r.facility||'—'))].sort();
+  const facSel=document.getElementById('map-facility-sel');
+  const prevFac=facSel.value;
+  facSel.innerHTML=facilities.map(f=>`<option value="${f}">${f}</option>`).join('');
+  if(facilities.includes(prevFac))facSel.value=prevFac;
+  else facSel.value=facilities[0]||'';
+  _updateRoomSel();
+  // Ensure activeRackId is valid
+  if(!activeRackId||!RACKS.find(r=>r.rack_id===activeRackId)){
+    const saved=SETTINGS.last_rack_id&&RACKS.find(r=>r.rack_id===SETTINGS.last_rack_id);
+    activeRackId=saved?SETTINGS.last_rack_id:(RACKS.length>0?RACKS[0].rack_id:null);
+    activeFaceKey=null;
+  }
+  _renderMinimap();
+  if(dualViewActive){
+    _dualRenderMinimap('l');_dualRenderMinimap('r');
+    _dualRenderFace('l');_dualRenderFace('r');
+    return;
+  }
+  // If a specific face was selected, use it; otherwise render whole rack (or first face)
+  if(activeFaceKey){
+    const parts=activeFaceKey.split('__');
+    renderRackMap(parts[0],parts[1]);
+  } else {
+    renderRackMap(activeRackId);
+  }
+}
+
+function _updateRoomSel(){
+  const fac=document.getElementById('map-facility-sel').value;
+  const rooms=[...new Set(RACKS.filter(r=>(r.facility||'—')===fac).map(r=>r.room||'—'))].sort((a,b)=>isNaN(a)||isNaN(b)?a<b?-1:1:Number(a)-Number(b));
+  const roomSel=document.getElementById('map-room-sel');
+  const prevRoom=roomSel.value;
+  roomSel.innerHTML=rooms.map(r=>`<option value="${r}">${r}</option>`).join('');
+  if(rooms.includes(prevRoom))roomSel.value=prevRoom;
+  else roomSel.value=rooms[0]||'';
+}
+
+function _filteredRacks(){
+  const fac=document.getElementById('map-facility-sel').value;
+  const room=document.getElementById('map-room-sel').value;
+  return RACKS.filter(r=>(r.facility||'—')===fac&&(r.room||'—')===room);
+}
+
+function _renderMinimap(){
+  const fac=document.getElementById('map-facility-sel').value;
+  const room=document.getElementById('map-room-sel').value;
+  const faceMode=(SETTINGS&&SETTINGS.face_mode)||'one';
+  const visibleRacks=RACKS.filter(r=>(r.facility||'\u2014')===fac&&(r.room||'\u2014')===room)
+    .sort((a,b)=>a.rack_id.localeCompare(b.rack_id));
+  const strip=document.getElementById('map-minimap');
+  function faceGrid(rack,face){
+    const rows=genAxisValues(face.row_start,face.row_end);
+    const cols=genAxisValues(face.col_start,face.col_end);
+    return rows.map(function(row){
+      return '<div class="minimap-row">'+cols.map(function(col){
+        const k=rack.rack_id+'_'+row+'_'+col;
+        const d=cageMapData[k];
+        let bg='#f0ede8';
+        if(d){const proto=[...d.protos][0]||'default';bg=protoColor(proto);}
+        return '<div class="minimap-cell" style="background:'+bg+'"></div>';
+      }).join('')+'</div>';
+    }).join('');
+  }
+  if(faceMode==='one'){
+    // Show faces that EVER had a cage assignment (include expired animals)
+    // Scan all events for cage_row/col in each face's range
+    const everUsedCages=new Set();
+    const allHistEvs=[...RAW,...fullToCompact(newEvents)];
+    allHistEvs.forEach(function(ev){
+      // Types that carry cage: 0(purchased),1(born),2(weaned),3(sexed),4(tagged),5(geno),6(cage_assigned),7(exp_start),8(expired)
+      // cage_row and cage_col are in predictable positions per type
+      let cr='',cc='',ri='';
+      const t=ev[0],f=ev.slice(5);
+      if(t===0){cr=f[4];cc=f[5];ri=f[6];}
+      else if(t===1){cr=f[5];cc=f[6];ri=f[7];}
+      else if(t===2){cr=f[3];cc=f[4];ri=f[5];}
+      else if(t===3){cr=f[1];cc=f[2];ri=f[3];}
+      else if(t===4){cr=f[2];cc=f[3];ri=f[4];}
+      else if(t===5){cr=f[2];cc=f[3];ri=f[4];}
+      else if(t===6){cr=f[3];cc=f[4];ri=f[5];}
+      else if(t===7){cr=f[1];cc=f[2];ri=f[3];}
+      else if(t===8){const off=f[0]==='mating'?5:3;cr=f[off+1];cc=f[off+2];ri=f[off+3];}
+      else if(t===9){cr=f[3];cc=f[4];ri=f[5];}
+      if(cr&&cc&&ri)everUsedCages.add(ri+'_'+cr+'_'+cc);
+    });
+
+    strip.innerHTML=visibleRacks.flatMap(function(rack){
+      return (rack.faces||[]).filter(function(face){
+        const rows=genAxisValues(face.row_start,face.row_end);
+        const cols=genAxisValues(face.col_start,face.col_end);
+        return rows.some(function(row){return cols.some(function(col){
+          return everUsedCages.has(rack.rack_id+'_'+row+'_'+col)||!!cageMapData[rack.rack_id+'_'+row+'_'+col];
+        });});
+      }).map(function(face,fi){
+        const faceKey=rack.rack_id+'__'+face.face_id;
+        const isActive=activeFaceKey===faceKey||(activeRackId===rack.rack_id&&!activeFaceKey&&fi===0);
+        const rackNum=rack.rack_id.replace('RACK-','');
+        return '<div class="minimap-rack'+(isActive?' active':'')+'" onclick="selectFace(this)" data-rack="'+rack.rack_id+'" data-face="'+face.face_id+'" title="'+rack.rack_id+' '+face.label+'">'
+          +'<div class="minimap-rack-label">'+rackNum+'<span style="display:block;font-size:9px;color:#aaa">'+face.label+'</span></div>'
+          +'<div class="minimap-faces"><div class="minimap-face">'+faceGrid(rack,face)+'</div></div></div>';
+      });
+    }).join('');
+  } else {
+    strip.innerHTML=visibleRacks.map(function(rack){
+      const faces=rack.faces||[];
+      const facesHTML=faces.map(function(face,fi){
+        const div=fi<faces.length-1?'<div class="minimap-divider"></div>':'';
+        return '<div class="minimap-face">'+faceGrid(rack,face)+'</div>'+div;
+      }).join('');
+      const rackNum=rack.rack_id.replace('RACK-','');
+      return '<div class="minimap-rack'+(rack.rack_id===activeRackId?' active':'')+'" onclick="selectRack(this)" data-rack="'+rack.rack_id+'" title="'+rack.rack_id+'">'
+        +'<div class="minimap-rack-label">'+rackNum+'</div>'
+        +'<div class="minimap-faces">'+facesHTML+'</div></div>';
+    }).join('');
+  }
+}
+
+function onMapFacilityChange(){_updateRoomSel();_renderMinimap();if(_filteredRacks().length)selectRack(_filteredRacks()[0].rack_id);}
+function onMapRoomChange(){_renderMinimap();if(_filteredRacks().length)selectRack(_filteredRacks()[0].rack_id);}
+
+function _switchToMap(){
+  const mapSec=document.getElementById('sec-map');
+  if(!mapSec.classList.contains('active')){
+    // Switch tab manually WITHOUT calling renderMap() — that would reset the face
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.nt').forEach(b=>b.classList.remove('active'));
+    mapSec.classList.add('active');
+    const mapBtn=[...document.querySelectorAll('.nt')].find(b=>(b.getAttribute('onclick')||'').includes("'map'"));
+    if(mapBtn)mapBtn.classList.add('active');
+    // Initialize map dropdowns if needed (first time visiting)
+    const facSel=document.getElementById('map-facility-sel');
+    if(!facSel.options.length){
+      const facilities=[...new Set(RACKS.map(r=>r.facility||'—'))].sort();
+      facSel.innerHTML=facilities.map(f=>`<option value="${f}">${f}</option>`).join('');
+      _updateRoomSel();
+    }
+  }
+}
+function selectRack(elOrId){
+  const id=typeof elOrId==='string'?elOrId:elOrId.dataset.rack;
+  activeRackId=id; activeFaceKey=null;
+  SETTINGS.last_rack_id=id;
+  const rack=getRackById(id);
+  if(rack){
+    const facSel=document.getElementById('map-facility-sel');
+    const roomSel=document.getElementById('map-room-sel');
+    const fac=rack.facility||'—'; const room=rack.room||'—';
+    if(facSel.value!==fac){facSel.value=fac;_updateRoomSel();}
+    if(roomSel.value!==room)roomSel.value=room;
+  }
+  _switchToMap();
+  _renderMinimap();
+  renderRackMap(id);
+}
+function selectFace(elOrId,faceId){
+  const rackId=typeof elOrId==='string'?elOrId:elOrId.dataset.rack;
+  const fId=faceId||(typeof elOrId==='object'?elOrId.dataset.face:'');
+  activeRackId=rackId; activeFaceKey=rackId+'__'+fId;
+  SETTINGS.last_rack_id=rackId;
+  const rack=getRackById(rackId);
+  if(rack){
+    const facSel=document.getElementById('map-facility-sel');
+    const roomSel=document.getElementById('map-room-sel');
+    const fac=rack.facility||'—'; const room=rack.room||'—';
+    if(facSel.value!==fac){facSel.value=fac;_updateRoomSel();}
+    if(roomSel.value!==room)roomSel.value=room;
+  }
+  _switchToMap();
+  _renderMinimap();
+  renderRackMap(rackId,fId);
+}
+
+
+
+
+function renderRackMap(rackId,faceId){
+  const rack=getRackById(rackId);
+  const wrap=document.getElementById('rack-map');
+  const infoEl=document.getElementById('map-info');
+  if(!rack){wrap.innerHTML='<div class="empty">Select a rack to view.</div>';return;}
+  const faces=rack.faces||[];
+  // Filter cages belonging to THIS rack by rack_id
+  cagePos={};
+  Object.values(cageMapData).forEach(d=>{
+    if(d.rack_id===rackId) cagePos[d.row+'_'+d.col]={row:d.row,col:d.col};
+  });
+  // Fallback: if no rack_id matches (legacy data), use face ranges
+  if(Object.keys(cagePos).length===0){
+    Object.values(cageMapData).forEach(d=>{
+      const r=d.row,col2=d.col;
+      for(const face of faces){
+        const rows=genAxisValues(face.row_start,face.row_end);
+        const cols=genAxisValues(face.col_start,face.col_end);
+        if(rows.includes(String(r))&&cols.includes(String(col2))){cagePos[r+'_'+col2]={row:r,col:col2};}
+      }
+    });
+  }
+  const pl={};Object.keys(cagePos).forEach(k=>{pl[k]=k;});
+
+  function renderFace(face){
+    const rows=genAxisValues(face.row_start,face.row_end);
+    const cols=genAxisValues(face.col_start,face.col_end);
+    let h=`<div class="face-wrap"><div class="face-lbl">${face.label}</div>
+      <div class="col-hdrs">${cols.map(c=>`<div class="col-hdr">${c}</div>`).join('')}</div>`;
+    rows.forEach(row=>{
+      h+=`<div class="grid-row"><div class="row-lbl">${row}</div>`;
+      cols.forEach(col=>{
+        const k=rackId+'_'+row+'_'+col;const data=cageMapData[k];
+        const da=fmtCage(row,col);
+        if(data){
+          const proto=[...data.protos][0]||'default';
+          const colr=protoColor(proto);
+          const protoLabel=[...data.protos].join('+');
+          const isMating=data.isMating;
+
+          // DOBs grouped by sex for inline display — filter by this specific cage
+          const mDobs=[...new Set(DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&!a.unweaned&&a.sex==='M'&&!isExpired(a)).map(a=>a.dob).filter(Boolean))];
+          const fDobs=[...new Set(DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&!a.unweaned&&a.sex==='F'&&!isExpired(a)).map(a=>a.dob).filter(Boolean))];
+          const pDobs=[...new Set(DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&a.unweaned&&!isExpired(a)).map(a=>a.dob).filter(Boolean))];
+
+          // Compact age: just "Xw Yd" without date/PND
+          function compactAge(dob){
+            if(!dob)return '';
+            const d=ageDays(dob);if(d<0)return '';
+            const w=Math.floor(d/7),r=d%7;
+            return (w>0?w+'w ':'')+r+'d';
+          }
+          function fmtDobShort(dob){
+            if(!dob)return '';
+            const p=dob.split('-');if(p.length<3)return '';
+            const yr=String(parseInt(p[0])).slice(-2);
+            return p[1]+'/'+p[2]+'/'+yr;
+          }
+          function ageBadge(dob,cls){
+            const age=compactAge(dob);
+            if(!age)return '';
+            const dobPart=!isMating?' <span style="color:#888;font-weight:600">('+fmtDobShort(dob)+')</span>':'';
+            return '<span class="'+cls+'" style="margin-right:2px">'+age+dobPart+'</span>';
+          }
+
+          // Row 1: M badges + F badges on same line
+          const mBadges=data.m>0
+            ?`<span class="cmfb cmf-m">${data.m}M</span>`
+            +''+mDobs.map(d=>ageBadge(d,'crow-age')).join('')
+            :'';
+          const fBadges=data.f>0
+            ?`<span class="cmfb cmf-f">${data.f}F</span>`
+            +''+fDobs.map(d=>ageBadge(d,'crow-age')).join('')
+            :'';
+          const mfRow=(data.m>0||data.f>0)
+            ?`<div class="crow">${mBadges}${data.m>0&&data.f>0?'<span class="crow-sep"></span>':''}${fBadges}</div>`
+            :'';
+
+          // Row 2: pups
+          const pRow=data.pups>0
+            ?`<div class="crow"><span class="cmfb cmf-pup-badge">🐭 ${data.pups}</span>${pDobs.map(d=>ageBadge(d,'crow-age')).join('')}</div>`
+            :'';
+
+          // Stripe left bar for mating: use background pseudo trick on ccard
+          // Use padding-left to create space, then background covers it
+          const cardStyle=isMating
+            ?`border:none;padding-left:10px;background:repeating-linear-gradient(135deg,${colr} 0,${colr} 3px,${colr}33 3px,${colr}33 6px) 0 0/6px 100% no-repeat,#fff`
+            :`border-left:4px solid ${colr}`;
+
+          h+=`<div class="cell" ondragover="onDO(event)" ondrop="onDrop(event,'${row}','${col}','${rackId}')" ondragleave="onDL(event)" data-row="${row}" data-col="${col}">
+            <div class="ccard" style="${cardStyle}" draggable="true" data-k="${k}" data-rack="${rackId}"
+              ondragstart="onDS(event,'${k}','${rackId}')" ondragend="onDE(event)"
+              onmouseenter="showMTT(event,'${k}')" onmouseleave="hideMTT()"
+              onclick="if(!event.defaultPrevented)showCageDetail('${k}')">
+              <div class="caddr">${da} <span class="cproto-inline">${isMating&&matingCagePairs[k]?protoLabel+' – '+matingCagePairs[k]:protoLabel}</span></div>
+              ${mfRow}${pRow}
+            </div></div>`;
+        } else {
+          h+=`<div class="cell" ondragover="onDO(event)" ondrop="onDrop(event,'${row}','${col}','${rackId}')" ondragleave="onDL(event)" data-row="${row}" data-col="${col}"></div>`;
+        }
+      });
+      h+='</div>';
+    });
+    return h+'</div>';
+  }
+  const faceMode=(SETTINGS&&SETTINGS.face_mode)||'one';
+  const facesToShow = faceMode==='one'
+    ? (faceId ? faces.filter(f=>f.face_id===faceId) : faces.slice(0,1))
+    : faces;
+  if(facesToShow.length===1){
+    wrap.innerHTML=renderFace(facesToShow[0]);
+  } else if(facesToShow.length>=2){
+    wrap.innerHTML=facesToShow.map((f,i)=>renderFace(f)+(i<facesToShow.length-1?'<div class="map-div"></div>':'')).join('');
+
+  }
+  const occ=Object.values(cageMapData).filter(d=>{const rack2=getRackForCage(d.row,d.col);return rack2&&rack2.rack_id===rackId;}).length;
+  const tot=Object.values(cageMapData).filter(d=>{const rack2=getRackForCage(d.row,d.col);return rack2&&rack2.rack_id===rackId;}).reduce((s,c)=>s+c.m+c.f,0);
+  infoEl.innerHTML=`<span>${rack.rack_id}</span><span>Facility: <b>${rack.facility}</b></span><span>Room: <b>${rack.room}</b></span><span>Active cages: <b>${occ}</b></span><span>Active animals: <b>${tot}</b></span>`;
+}
+
+// ─── Cage Detail Modal ────────────────────────────────────────
+function showCageDetail(k){
+  const data=cageMapData[k];if(!data)return;
+  const rackId=data.rack_id,row=data.row,col=data.col;
+  const da=fmtCage(row,col);
+  const rack=getRackById(rackId);
+  const rackLabel=rack?rack.name:(rackId?rackId.replace('RACK-','Rack '):'');
+  document.getElementById('cage-modal-title').textContent='Cage '+da+(rackLabel?' · '+rackLabel:'');
+
+  // Get all active animals in this cage
+  const animals=DB.filter(a=>a.cage_row===row&&a.cage_col===col&&a.rack_id===rackId&&!isExpired(a));
+  const adults=animals.filter(a=>!a.unweaned);
+  const pups=animals.filter(a=>a.unweaned);
+
+  const sexColor={M:'#dbeafe',F:'#fce7e7','?':'#f3f4f6'};
+  const sexText={M:'#1e40af',F:'#991b1b','?':'#6b7280'};
+
+  // ── Cage summary bar ──
+  const protos=[...new Set(adults.map(a=>a.proto).filter(Boolean))];
+  const mCount=adults.filter(a=>a.sex==='M').length;
+  const fCount=adults.filter(a=>a.sex==='F').length;
+  const isMating=data.isMating;
+
+  // Mating pair info
+  let matingHtml='';
+  if(isMating){
+    const pair=matingCagePairs[k]||'';
+    const mProto=matingCageProtos[k]||'';
+    matingHtml=`<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#fff8f0;border-radius:7px;margin-bottom:10px;border:1px solid #fde8c8">
+      <span style="font-size:13px">🐣</span>
+      <span style="font-size:12px;font-weight:600;color:#92400e">Mating cage</span>
+      ${pair?`<span style="font-size:11px;color:#b45309;background:#fef3c7;border-radius:4px;padding:1px 6px">${pair}</span>`:''}
+      ${mProto?`<span style="font-size:11px;color:#6b7280">· ${mProto}</span>`:''}
+    </div>`;
+  }
+
+  // ── Summary stats ──
+  const summaryHtml=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+    ${mCount>0?`<div style="background:#dbeafe;color:#1e40af;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">${mCount}M</div>`:''}
+    ${fCount>0?`<div style="background:#fce7e7;color:#991b1b;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">${fCount}F</div>`:''}
+    ${pups.length>0?`<div style="background:#e0e7ff;color:#3730a3;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">🐭 ${pups.length} pups</div>`:''}
+    ${protos.map(p=>`<div style="background:#f1f0ec;color:#444;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;border:1px solid #e0ddd6">${p}</div>`).join('')}
+    <div style="background:#f1f0ec;color:#6b7280;border-radius:6px;padding:4px 10px;font-size:11px">${rackLabel}${rack&&rack.room?' · Room '+rack.room:''}</div>
+  </div>`;
+
+  // ── Animal rows ──
+  function animalRow(a){
+    const geno=a.geno_display||'';
+    const dobStr=a.dob?fmtDobAge(a.dob):'—';
+    const expTag=a.exp_start?`<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:4px;padding:1px 5px;margin-left:4px">In exp.</span>`:'';
+    const tagStr=a.tag_id?`<span style="font-size:10px;color:#9ca3af">Tag: ${a.tag_id}</span>`:'';
+    const remarkStr=a.remark?`<div style="font-size:10px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px" title="${a.remark}">💬 ${a.remark}</div>`:'';
+    const sireDam=(a.sire||a.dam)?`<div style="font-size:10px;color:#9ca3af;margin-top:1px">${a.sire?'♂ #'+a.sire:''}${a.sire&&a.dam?' × ':''}${a.dam?'♀ #'+a.dam:''}</div>`:'';
+    const originBadge=a.origin?`<span style="font-size:10px;color:#6b7280;background:#f4f2ef;border-radius:3px;padding:0 4px">${a.origin}</span>`:'';
+    const isUnweaned=a.unweaned;
+    const bg=isUnweaned?'#f8f6ff':'#fff';
+
+    return`<div class="cage-animal-row" draggable="true" style="background:${bg};border-radius:6px;padding:8px 10px;margin-bottom:4px;border:1px solid #f0ede8"
+      ondragstart="onCageAnimalDS(event,${a.sn},'${k}')"
+      ondragend="onCageAnimalDE(event)">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="flex-shrink:0">
+          <span class="cage-animal-sn" style="font-size:13px;font-weight:700;cursor:pointer;color:#1e40af;text-decoration:underline" onclick="closeModal('modal-cage');showAnimalDetail(${a.sn})">#${a.sn}</span>
+          ${isUnweaned?`<span style="font-size:9px;display:block;color:#6d28d9;font-weight:600;text-align:center">PUP</span>`:''}
+        </div>
+        <span class="cage-animal-sex" style="background:${sexColor[a.sex]||'#f3f4f6'};color:${sexText[a.sex]||'#6b7280'};flex-shrink:0">${a.sex||'?'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            ${geno?`<span class="cage-animal-geno" style="font-size:11px">${geno}</span>`:''}
+            ${originBadge}
+            ${expTag}
+            ${tagStr}
+          </div>
+          <div style="font-size:11px;color:#555;margin-top:2px">${dobStr}</div>
+          ${sireDam}
+          ${remarkStr}
+        </div>
+        ${a.proto?`<span style="font-size:10px;font-weight:600;color:${protoColor(a.proto)};flex-shrink:0">${a.proto}</span>`:''}
+      </div>
+    </div>`;
+  }
+
+  let bodyHtml=matingHtml+summaryHtml;
+
+  if(adults.length>0){
+    bodyHtml+=`<div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Adults (${adults.length})</div>`;
+    bodyHtml+=adults.map(animalRow).join('');
+  }
+  if(pups.length>0){
+    bodyHtml+=`<div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 5px">Pups (${pups.length})</div>`;
+    bodyHtml+=pups.map(animalRow).join('');
+  }
+  if(animals.length===0){
+    bodyHtml+='<div style="color:#bbb;padding:16px;text-align:center">No active animals</div>';
+  }
+
+  document.getElementById('cage-modal-body').innerHTML=bodyHtml;
+  document.getElementById('modal-cage').classList.add('open');
+}
+
+let dragAnimalSN=null,dragFromKey=null;
+function onCageAnimalDS(e,sn,fromKey){
+  dragAnimalSN=sn;dragFromKey=fromKey;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',String(sn));
+  // Close modal immediately so map cells are accessible for drop
+  setTimeout(()=>{
+    closeModal('modal-cage');
+    // Add visual hint on all cells
+    document.querySelectorAll('.cell').forEach(c=>c.classList.add('drop-ready'));
+  },0);
+}
+function onCageAnimalDE(e){
+  e.currentTarget.classList.remove('dragging-animal');
+  document.querySelectorAll('.cell').forEach(c=>c.classList.remove('drop-ready'));
+  // If drop didn't happen, clear state
+  setTimeout(()=>{dragAnimalSN=null;dragFromKey=null;},50);
+}
+
+// drag drop map
+function onDS(e,k,rackId){dragging=k;draggingRackId=rackId;hideMTT();mttLocked=true;setTimeout(()=>e.currentTarget.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move';}
+function onDE(e){e.currentTarget.classList.remove('dragging');dragging=null;draggingRackId=null;mttLocked=false;document.querySelectorAll('.cell').forEach(c=>c.classList.remove('drag-over'));}
+function onDO(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function onDL(e){e.currentTarget.classList.remove('drag-over');}
+function onDrop(e,toRow,toCol,toRackId){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  document.querySelectorAll('.cell').forEach(c=>c.classList.remove('drop-ready'));
+  // Handle single-animal drag from cage detail modal
+  // Read SN from dataTransfer in case dragAnimalSN was cleared by dragend timing
+  const snFromTransfer=parseInt(e.dataTransfer.getData('text/plain'))||0;
+  const animalSN=dragAnimalSN||snFromTransfer;
+  if(animalSN&&!dragging){
+    dragAnimalSN=null;dragFromKey=null;
+    const now=new Date().toISOString().slice(0,19);
+    const recorder=SETTINGS.recorder_name||'';
+    const toCage=fmtCage(toRow,toCol);
+    newEvents.push({event_id:'NEW_'+Date.now()+'_'+animalSN,event_type:'cage_assigned',
+      event_time:now,recorded_at:now,recorded_by:recorder,sn:animalSN,
+      payload:{cage:toCage,cage_row:String(toRow),cage_col:String(toCol),rack_id:toRackId}});
+  updateUndoBtn();
+    initDB();initMapData();
+    if(dualViewActive){_dualRefresh();}else{renderRackMap(activeRackId,activeFaceKey?activeFaceKey.split('__')[1]:undefined);_renderMinimap();}
+    return;
+  }
+  if(!dragging)return;
+  const fromRackId=draggingRackId;
+  const toK=toRackId+'_'+toRow+'_'+toCol;
+  if(toK===dragging)return;
+  const fromData=cageMapData[dragging];
+  const toData=cageMapData[toK];
+  if(!fromData)return;
+
+  const now=new Date().toISOString().slice(0,19);
+  const recorder=SETTINGS.recorder_name||'';
+  const toCage=fmtCage(toRow,toCol);
+  const fromRow=fromData.row,fromCol=fromData.col;
+  const fromCage=fmtCage(fromRow,fromCol);
+  // Batch ID groups all events from this single drag action
+  const batchId='BATCH_'+Date.now();
+
+  // Create cage_assigned event for each animal moving to new cage
+  fromData.sns.forEach(sn=>{
+    newEvents.push({event_id:'NEW_'+Date.now()+'_'+sn,batch_id:batchId,event_type:'cage_assigned',
+      event_time:now,recorded_at:now,recorded_by:recorder,sn,
+      payload:{cage:toCage,cage_row:String(toRow),cage_col:String(toCol),rack_id:toRackId}});
+  });
+
+  // If swapping, move destination animals back to fromCage
+  if(toData){
+    toData.sns.forEach(sn=>{
+      newEvents.push({event_id:'NEW_'+Date.now()+'_'+sn+'s',batch_id:batchId,event_type:'cage_assigned',
+        event_time:now,recorded_at:now,recorded_by:recorder,sn,
+        payload:{cage:fromCage,cage_row:String(fromRow),cage_col:String(fromCol),rack_id:fromRackId}});
+    });
+  }
+
+  updateUndoBtn();
+  // Rebuild and re-render
+  initDB();
+  initMapData();
+  if(dualViewActive){_dualRefresh();}else{renderRackMap(activeRackId);_renderMinimap();}
+}
+// map tooltip
+const mttEl=document.getElementById('map-tt');
+let mttLocked=false;
+function showMTT(e,k){
+  if(mttLocked)return;
+  const data=cageMapData[k];if(!data)return;
+  const da=fmtCage(data.row,data.col);
+  const dobs=[...new Set(data.dobs)];
+  mttEl.innerHTML=`<div class="mtt-t">Cage ${da}</div>
+    <div class="mtt-r"><span class="mtt-l">Protocol</span><span>${[...data.protos].join(', ')}</span></div>
+    <div class="mtt-r"><span class="mtt-l">Animals</span><span>${data.m>0?data.m+'M ':''} ${data.f>0?data.f+'F':''} ${data.pups>0?'🐭'+data.pups:''}</span></div>
+    <div class="mtt-r"><span class="mtt-l">DOB(s)</span><span style="font-size:10px;line-height:1.7">${dobs.map(fmtDate).join('<br>')}</span></div>
+    <div class="mtt-sn">SNs: ${data.sns.slice(0,10).join(', ')}${data.sns.length>10?` +${data.sns.length-10}`:''}</div>`;
+  mttEl.classList.add('vis');posMTT(e);
+}
+function hideMTT(){mttEl.classList.remove('vis');}
+document.addEventListener('mousemove',e=>{if(mttEl.classList.contains('vis'))posMTT(e);});
+function posMTT(e){const tw=260,th=200,wx=window.innerWidth,wy=window.innerHeight;mttEl.style.left=(e.clientX+tw+12>wx?e.clientX-tw-10:e.clientX+12)+'px';mttEl.style.top=(e.clientY+th+12>wy?e.clientY-th-10:e.clientY+12)+'px';}
+
+// ═══════════════════════════════════════════════════════════════
+//  RACK MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+// ─── Space (Face) Management ───────────────────────────────────
+// RACKS keeps the existing {rack_id, faces:[]} structure for backward compat.
+// The Spaces UI shows each face as an independent Space entry.
+
+function renderRacks(){
+  // Hierarchy: Facility > Room > Rack > Face
+  const tree={};
+  RACKS.forEach(r=>{
+    const fac=r.facility||'?';const rm=r.room||'?';
+    if(!tree[fac])tree[fac]={};
+    if(!tree[fac][rm])tree[fac][rm]={};
+    const rackNum=r.rack_id.replace('RACK-','');
+    if(!tree[fac][rm][rackNum])tree[fac][rm][rackNum]={rack:r,faces:[]};
+    (r.faces||[]).forEach(face=>tree[fac][rm][rackNum].faces.push(face));
+  });
+  let html='';
+  Object.entries(tree).sort().forEach(([fac,rooms])=>{
+    html+=`<div style="margin-bottom:18px"><div class="space-tree-fac">🏢 ${fac}</div>`;
+    Object.entries(rooms).sort().forEach(([rm,racks])=>{
+      html+=`<div class="space-tree-room">🚪 Room ${rm}</div>`;
+      Object.entries(racks).sort((a,b)=>+a[0]-+b[0]).forEach(([rackNum,{rack:r,faces}])=>{
+        html+=`<div class="space-tree-rack">📦 ${rackNum}</div>`;
+        faces.sort((a,b)=>a.face_id.localeCompare(b.face_id)).forEach(f=>{
+          const editKey=r.rack_id+'__'+f.face_id;
+          const faceNum=f.face_id.replace('F','');
+          const activeCages=Object.values(cageMapData).filter(d=>{
+            const rows=genAxisValues(f.row_start,f.row_end);
+            const cols=genAxisValues(f.col_start,f.col_end);
+            return d.rack_id===r.rack_id&&rows.includes(d.row)&&cols.includes(d.col);
+          }).length;
+          html+=`<div class="rack-card space-tree-face">
+            <div class="rack-card-title">
+              <span style="font-weight:700">Face ${faceNum}</span>
+              <span class="space-range">Rows ${f.row_start}–${f.row_end} &nbsp;·&nbsp; Cols ${f.col_start}–${f.col_end} &nbsp;·&nbsp; ${activeCages} active</span>
+              <button class="btn btn-sm" onclick="openSpaceModal('${editKey}')" style="margin-left:auto">Edit</button>
+            </div>
+          </div>`;
+        });
+      });
+    });
+    html+='</div>';
+  });
+  if(!html)html='<div class="empty">No spaces defined. Add one above.</div>';
+  document.getElementById('rack-list').innerHTML=html;
+}
+
+function updateSpacePreview(){
+  const rn=document.getElementById('rm-rack-num').value.trim();
+  const fn=document.getElementById('rm-face-num').value.trim();
+  const prev=document.getElementById('rm-space-preview');
+  if(rn&&fn){
+    prev.textContent='→ RACK-'+rn+' · Face '+fn;
+    prev.style.display='block';
+  } else {prev.style.display='none';}
+}
+function openSpaceModal(editKey){
+  document.getElementById('rm-delete-btn').style.display=editKey?'':'none';
+  document.getElementById('rm-edit-id').value=editKey||'';
+  if(editKey){
+    document.getElementById('rack-modal-title').textContent='Edit space';
+    const parts=editKey.split('__');
+    const rackId=parts[0]; const faceId=parts[1];
+    const rack=getRackById(rackId);
+    const face=(rack?.faces||[]).find(f=>f.face_id===faceId)||{};
+    // Extract numbers from IDs
+    const rackNum=rackId.replace('RACK-','');
+    const faceNum=faceId.replace('F','');
+    document.getElementById('rm-rack-num').value=rackNum;
+    document.getElementById('rm-face-num').value=faceNum;
+    document.getElementById('rm-facility').value=rack?.facility||'';
+    document.getElementById('rm-room').value=rack?.room||'';
+    document.getElementById('rm-f1-rtop').value=face.row_start||'';
+    document.getElementById('rm-f1-rbot').value=face.row_end||'';
+    document.getElementById('rm-f1-cleft').value=face.col_start||'';
+    document.getElementById('rm-f1-cright').value=face.col_end||'';
+  } else {
+    document.getElementById('rack-modal-title').textContent='Add space';
+    ['rm-rack-num','rm-face-num','rm-facility','rm-room',
+     'rm-f1-rtop','rm-f1-rbot','rm-f1-cleft','rm-f1-cright'].forEach(id=>document.getElementById(id).value='');
+  }
+  updateSpacePreview();
+  document.getElementById('modal-rack').classList.add('open');
+}
+// Keep openRackModal as alias for compat
+function openRackModal(id){openSpaceModal(id);}
+
+function saveRack(){
+  const editKey=g('rm-edit-id');
+  const rackNum=document.getElementById('rm-rack-num').value.trim();
+  const faceNum=document.getElementById('rm-face-num').value.trim();
+  if(!rackNum){alert('Rack number required.');return;}
+  if(!faceNum){alert('Face number required.');return;}
+  const rackId='RACK-'+rackNum;
+  const faceId='F'+faceNum;
+  const spaceLabel=rackNum+' · F'+faceNum;
+  const facility=g('rm-facility')||'';
+  const room=g('rm-room')||'';
+  const rowStart=g('rm-f1-rtop'),rowEnd=g('rm-f1-rbot');
+  const colStart=g('rm-f1-cleft'),colEnd=g('rm-f1-cright');
+  const axisType={row:/^\d+$/.test(rowStart)?'numeric':'alpha',col:/^\d+$/.test(colStart)?'numeric':'alpha'};
+  const newFace={face_id:faceId,label:spaceLabel,row_start:rowStart,row_end:rowEnd,col_start:colStart,col_end:colEnd,axis_type:axisType};
+
+  let rack=getRackById(rackId);
+  if(!rack){
+    rack={rack_id:rackId,name:'Rack '+rackNum,facility,room,cn:parseInt(rackNum)||0,faces:[]};
+    RACKS.push(rack);
+  } else {
+    rack.facility=facility;rack.room=room;
+  }
+  const fi=rack.faces.findIndex(f=>f.face_id===faceId);
+  if(fi>=0)rack.faces[fi]=newFace; else rack.faces.push(newFace);
+  closeModal('modal-rack');
+  renderRacks();
+  initMapData();
+  _renderMinimap();
+}
+
+function deleteRack(){
+  const editKey=g('rm-edit-id');if(!editKey)return;
+  const parts=editKey.split('__');
+  const rackId=parts[0],faceId=parts[1];
+  if(!confirm('Delete space '+editKey+'?'))return;
+  const rack=getRackById(rackId);
+  if(rack){
+    rack.faces=rack.faces.filter(f=>f.face_id!==faceId);
+    if(!rack.faces.length)RACKS=RACKS.filter(r=>r.rack_id!==rackId);
+  }
+  closeModal('modal-rack');renderRacks();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS TAB
+// ═══════════════════════════════════════════════════════════════
+function renderSettingsTab(){
+  document.getElementById('set-name').value=SETTINGS.recorder_name||'';
+  document.getElementById('set-showtime').checked=!!SETTINGS.timeline_show_time;
+  document.getElementById('set-cageformat').value=SETTINGS.cage_addr_format||'col_row';
+  const vs=getViewState();
+  const sEl=document.getElementById('set-sort');if(sEl)sEl.value=vs.sort||'old_first';
+  const mEl=document.getElementById('set-viewmode');if(mEl)mEl.value=vs.mode||'flat';
+  renderColorGrid();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ALERTS
+// ═══════════════════════════════════════════════════════════════
+function renderAlerts(){
+  const alerts=[];
+  if(!SETTINGS.recorder_name)alerts.push({t:'blue',text:'Recorder name not set',meta:'Go to Settings tab to set your name'});
+  const noCage=DB.filter(isActive).filter(a=>!a.cage_row&&!a.cage_col).length;
+  if(noCage>0)alerts.push({t:'yellow',text:`${noCage} active animals have no cage assigned`,meta:'Check Animals tab'});
+  DB.filter(isActive).filter(a=>(!a.loci||!a.loci.length)&&a.exp_start).slice(0,5).forEach(a=>alerts.push({t:'yellow',text:`SN ${a.sn}: In experiment but no genotype confirmed`,meta:`Cage: ${fmtCage(a.cage_row,a.cage_col)}`}));
+  if(CUTOFF)alerts.push({t:'blue',text:`Viewing historical state: ${CUTOFF.slice(0,10)}`,meta:'Click ● Live to return to current'});
+  document.getElementById('al-badge').textContent=alerts.length||'';
+  if(!alerts.length){document.getElementById('alert-con').innerHTML='<div class="empty">No active alerts</div>';return;}
+  document.getElementById('alert-con').innerHTML=alerts.map(a=>`<div class="alert-item"><div class="adot adot-${a.t==='red'?'r':a.t==='yellow'?'y':'b'}"></div><div><div style="font-size:12px">${a.text}</div><div style="font-size:11px;color:#aaa;margin-top:2px">${a.meta||''}</div></div></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportCSV(){
+  if(!DB.length){alert('No data.');return;}
+  const{animals:all}=replayEvents(null);
+  const h=['SN','Protocol','Origin','Sex','DOB','Age_weeks','Cage','Cage_row','Cage_col','Rack','Genotype_loci','Genotype_display','Sire_SN','Dam_SN','Mating_ID','Tag_ID','Status','Expired','Experiment_start','Remark'];
+  function esc(v){const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;}
+  function aw(dob){if(!dob)return '';const p=dob.split('-');if(p.length<3)return '';let yr=parseInt(p[0]);if(yr<100)yr+=2000;return Math.round((Date.now()-new Date(yr,parseInt(p[1])-1,parseInt(p[2])))/604800000);}
+  const rows=all.map(a=>{const rack=getRackForCage(a.cage_row,a.cage_col);return[a.sn,a.proto,a.origin,a.sex,a.dob,aw(a.dob),fmtCage(a.cage_row,a.cage_col),a.cage_row,a.cage_col,rack?rack.name:'',(a.loci||[]).map(l=>l.locus+':'+l.status).join(';'),a.geno_display||'',a.sire||'',a.dam||'',a.mating_id||'',a.tag_id||'',isExpired(a)?'expired':'active',a.expired_date||'',a.exp_start||'',a.remark||''].map(esc).join(',');});
+  const csv=[h.join(','),...rows].join('\n');
+  dlBlob(csv,'text/csv','mouse_colony_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportJSON(){
+  if(!RAW.length){alert('No data.');return;}
+  saveSettings();
+  const out={schema_version:'3.0',exported:new Date().toISOString(),settings:SETTINGS,racks:RACKS,new_events_count:newEvents.length,total_events:RAW.length+newEvents.length,genotype_schema:{statuses:GENO_STATUS},events:[...compactToFull(RAW),...newEvents]};
+  dlBlob(JSON.stringify(out,null,2),'application/json','mouse_colony_events_'+new Date().toISOString().slice(0,10)+'.json');
+}
+function dlBlob(content,mime,name){const b=new Blob([content],{type:mime+';charset=utf-8;'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('today-date').textContent=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+// ═══════════════════════════════════════════════════════════════
+//  ANIMAL DETAIL MODAL
+// ═══════════════════════════════════════════════════════════════
+function showAnimalDetail(sn){
+  const a=DB.find(x=>x.sn===sn);
+  if(!a)return;
+  const allEvs=[...RAW,...fullToCompact(newEvents)];
+  const myEvs=allEvs.filter(e=>e[4]===sn).sort((a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:0);
+  const rack=a.rack_id?getRackById(a.rack_id):getRackForCage(a.cage_row,a.cage_col);
+  const rackLabel=rack?rack.rack_id.replace('RACK-',''):'';
+  const cageStr=fmtCage(a.cage_row,a.cage_col);
+  const sexBg={M:'#dbeafe',F:'#fce7e7','?':'#f3f4f6'};
+  const sexFg={M:'#1e40af',F:'#991b1b','?':'#6b7280'};
+
+  // ── Header ──
+  let html=`<div style="padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #f0ede8">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:22px;font-weight:700;font-family:monospace">#${a.sn}</span>
+      <span style="background:${sexBg[a.sex]||'#f3f4f6'};color:${sexFg[a.sex]||'#6b7280'};font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px">${a.sex||'?'}</span>
+      <span style="font-size:12px;font-weight:700;color:${protoColor(a.proto)}">${a.proto||''}</span>
+      ${isExpired(a)?'<span style="font-size:10px;background:#fee2e2;color:#7f1d1d;border-radius:4px;padding:1px 7px">Expired</span>':'<span style="font-size:10px;background:#dcfce7;color:#14532d;border-radius:4px;padding:1px 7px">Active</span>'}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#555">
+      ${a.geno_display?`<span style="background:#f4f2ef;border-radius:4px;padding:2px 7px;font-weight:600">${a.geno_display}</span>`:''}
+      ${cageStr?`<span>📍 <b>${cageStr}</b>${rackLabel?' <span style="color:#aaa">· '+rackLabel+'</span>':''}</span>`:''}
+      ${a.dob?`<span>🎂 <b>${a.dob}</b> &nbsp;<span style="color:#aaa">${ageWeeks(a.dob)}</span></span>`:''}
+      ${a.tag_id?`<span>🏷 Tag <b>${a.tag_id}</b></span>`:''}
+    </div>
+    ${(a.sire||a.dam)?`<div style="font-size:11px;color:#9ca3af;margin-top:6px">Parents: ${a.sire?'♂ #'+a.sire:''}${a.sire&&a.dam?' × ':''}${a.dam?'♀ #'+a.dam:''}</div>`:''}
+    ${a.remark?`<div style="font-size:11px;color:#9ca3af;margin-top:4px;font-style:italic">💬 ${a.remark}</div>`:''}
+  </div>`;
+
+  // ── Timeline table ──
+  const ICON={0:'🛒',1:'🐣',2:'📅',3:'🔓',4:'⚥',5:'🏷',6:'🧬',7:'📦',8:'🔬',9:'💀'};
+  const BG  ={0:'#e0e7ff',1:'#d1fae5',2:'#f3f4f6',3:'#fef9c3',4:'#f3f4f6',5:'#f3f4f6',6:'#e0e7ff',7:'#f3f4f6',8:'#fef3c7',9:'#fee2e2'};
+  const TC  ={0:'#3730a3',1:'#065f46',2:'#6b7280',3:'#713f12',4:'#6b7280',5:'#374151',6:'#3730a3',7:'#374151',8:'#92400e',9:'#7f1d1d'};
+  const dob=a.dob||'';
+
+  function ageAt(ds){
+    if(!dob||!ds)return'';
+    const d=ds.slice(0,10);
+    if(d==='0000-00-00')return'';
+    const [y1,m1,d1]=dob.split('-').map(Number);
+    const [y2,m2,d2]=d.split('-').map(Number);
+    const days=Math.round((new Date(y2,m2-1,d2)-new Date(y1,m1-1,d1))/86400000);
+    if(isNaN(days)||days<0)return'';
+    if(days===0)return'P0 (birth)';
+    const w=Math.floor(days/7),r=days%7;
+    return'P'+(w?w+'w ':'')+r+'d';
+  }
+  function fmtD(s){
+    if(!s)return'';
+    const d=s.slice(0,10);if(d==='0000-00-00')return'';
+    const [y,m,dd]=d.split('-');
+    return m+'/'+dd+'/'+String(parseInt(y)).slice(-2);
+  }
+  function detail(type,ev){
+    const f=ev.slice(5);
+    if(type===0)return'<span style="color:#aaa">Source:</span> '+(f[1]||'?')+(f[6]?'&nbsp;·&nbsp;'+f[6]:'');
+    if(type===1)return'<span style="color:#aaa">Litter</span> <b>'+(f[3]||'?')+'</b>'+(f[1]?'&nbsp;·&nbsp;♂#'+f[1]:'')+(f[2]?'&nbsp;×&nbsp;♀#'+f[2]:'');
+    if(type===2)return f[0]?'<span style="color:#aaa">Source:</span> '+f[0]:'';
+    if(type===3){const c=fmtCage(f[1],f[2]);return c?'→ Cage <b>'+c+'</b>':'Weaned';}
+    if(type===4)return'Sex confirmed: <b>'+(f[0]||'?')+'</b>';
+    if(type===5)return'Tag ID: <b>'+(f[0]||'')+'</b>';
+    if(type===6){const loci=f[0]||[];const p=[];for(let i=0;i<loci.length;i+=2)if(loci[i])p.push('<b>'+loci[i]+'</b>: '+(loci[i+1]||'WT'));return p.join('&nbsp;·&nbsp;')||(f[1]||'');}
+    if(type===7){const c=fmtCage(f[1],f[2]);const ri=(f[3]||'').replace('RACK-','');return c?'→ Cage <b>'+c+'</b>'+(ri?' <span style="color:#aaa">('+ri+')</span>':''):'Cage assigned';}
+    if(type===8){if(f[0]==='mating')return'Mating <b>'+(f[1]||'')+'</b>&nbsp;·&nbsp;'+(f[2]||'')+(f[3]?' <span style="color:#aaa">('+f[3]+')</span>':'');return'<b>'+(f[0]||'Experiment')+'</b>'+(f[1]?'&nbsp;·&nbsp;'+f[1]:'');}
+    if(type===9)return'<span style="color:#aaa">'+(f[0]||'')+'</span>&nbsp;→&nbsp;<b>'+(f[1]||'')+'</b>'+(f[2]?'&nbsp;·&nbsp;<span style="color:#aaa">'+f[2]+'</span>':'');
+    return'';
+  }
+
+  html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#bbb;margin-bottom:8px">Life Timeline</div>
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:#fafaf8">
+      <th style="padding:5px 10px;text-align:left;font-size:10px;color:#bbb;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ede9e3">Event</th>
+      <th style="padding:5px 10px;text-align:left;font-size:10px;color:#bbb;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ede9e3;white-space:nowrap">Date</th>
+      <th style="padding:5px 10px;text-align:left;font-size:10px;color:#bbb;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ede9e3;white-space:nowrap">Age</th>
+      <th style="padding:5px 10px;text-align:left;font-size:10px;color:#bbb;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ede9e3">Detail</th>
+    </tr></thead><tbody>`;
+
+  myEvs.forEach(ev=>{
+    const type=ev[0];
+    const ds=ev[1]||'';
+    const isZero=!ds||ds.slice(0,10)==='0000-00-00';
+    // Skip minor events with no date
+    if(isZero&&[2,3,4,5,6,7].includes(type))return;
+    const isKeyEvent=[0,1,3,8,9].includes(type);
+    const age=ageAt(ds);
+    html+=`<tr style="border-bottom:1px solid #f5f3f0${isKeyEvent?';background:#fdfcfb':''}">
+      <td style="padding:7px 10px;white-space:nowrap">
+        <span style="background:${BG[type]||'#f3f4f6'};color:${TC[type]||'#374151'};border-radius:5px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap">${ICON[type]||'·'} ${ET_LBL[type]||type}</span>
+      </td>
+      <td style="padding:7px 10px;white-space:nowrap;font-size:12px;color:#374151">${isZero?'<span style="color:#ddd">—</span>':fmtD(ds)}</td>
+      <td style="padding:7px 10px;white-space:nowrap;font-size:11px;color:#888;font-family:monospace">${age||'<span style="color:#ddd">—</span>'}</td>
+      <td style="padding:7px 10px;font-size:11px;color:#555;line-height:1.6">${detail(type,ev)}</td>
+    </tr>`;
+  });
+
+  if(myEvs.filter(ev=>{const isZero=!ev[1]||ev[1].slice(0,10)==='0000-00-00';return!(isZero&&[2,3,4,5,6,7].includes(ev[0]));}).length===0){
+    html+=`<tr><td colspan="4" style="padding:16px;text-align:center;color:#bbb">No events found</td></tr>`;
+  }
+
+  html+=`</tbody></table>`;
+
+  document.getElementById('animal-modal-title').innerHTML=
+    `<span style="font-family:monospace">#${a.sn}</span><span style="font-size:13px;font-weight:400;color:#aaa;margin-left:8px">${a.proto||''}</span>`;
+  document.getElementById('animal-modal-body').innerHTML=html;
+  document.getElementById('modal-animal').classList.add('open');
+}
+</script>
+
+<!-- CAGE DETAIL MODAL -->
+<div class="mbg" id="modal-cage" onclick="if(event.target===this)closeModal('modal-cage')">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" id="cage-modal-title">Cage detail</div>
+    <div id="cage-modal-body" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="faction">
+      <button class="btn" onclick="closeModal('modal-cage')">Close</button>
+    </div>
+  </div>
+</div>
+<div id="pop-tt" style="position:fixed;display:none;background:#fff;border:1px solid #e0ddd6;border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:160px;z-index:9999"></div>
+
+
+<!-- ANIMAL DETAIL MODAL -->
+<div class="mbg" id="modal-animal" onclick="if(event.target===this)closeModal('modal-animal')">
+  <div class="modal" style="max-width:640px;width:95vw">
+    <div class="modal-title" id="animal-modal-title">Animal detail</div>
+    <div id="animal-modal-body" style="max-height:75vh;overflow-y:auto"></div>
+    <div class="faction">
+      <button class="btn" onclick="closeModal('modal-animal')">Close</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
